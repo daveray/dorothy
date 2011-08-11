@@ -1,6 +1,6 @@
 # dorothy
 
-Hiccup-style generation of Graphviz graphs.
+[Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
 ## Usage
 
