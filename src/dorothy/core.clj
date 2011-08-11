@@ -1,15 +1,20 @@
-(ns dorothy.core)
+(ns dorothy.core
+  (:require [clojure.string :as cs]))
 
 (def ^:dynamic *options* {:edge-op "->"})
 
-(defn escape-id [id]
+; id's that don't need quotes
+(def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
+
+(defn- safe-id? [s] (re-find safe-id-pattern s))
+
+(defn- escape-id [id]
   (cond
     (keyword? id) (escape-id (name id))
-    (string? id)  (cond 
-                    (.startsWith id "<") id
-                    (and (.startsWith id "\"") (.endsWith id "\"")) id
-                    :else (str \" id \"))
-    :else (escape-id (str id))))
+    (string? id)  (if (safe-id? id) 
+                    id
+                    (str \" (cs/replace (str id) "\"" "\\\"") \"))
+    :else         (escape-id (str id))))
 
 (defprotocol Dot 
   (dot* [this]))
@@ -39,20 +44,19 @@
 (defn attrs [options]
   (reify Dot
     (dot* [this]
-      (apply str (interpose \, (for [[k v] options] (dot* (attr k v))))))))
+      (cs/join \, (for [[k v] options] (dot* (attr k v)))))))
 
+(defn- trailing-attrs [attr-map]
+  (if attr-map (str " [" (dot* (attrs attr-map)) "]")))
 
-(defn x-attrs [type options]
+(defn- x-attrs [type options]
   (reify Dot
     (dot* [this]
       (str type " [" (dot* (attrs options)) "]"))))
 
 (def graph-attrs (partial x-attrs "graph"))
-(def node-attrs (partial x-attrs "node"))
-(def edge-attrs (partial x-attrs "edge"))
-
-(defn trailing-attrs [attr-map]
-  (if attr-map (str " [" (dot* (attrs attr-map)) "]")))
+(def node-attrs  (partial x-attrs "node"))
+(def edge-attrs  (partial x-attrs "edge"))
 
 (defn node 
   ([attr-map id]
@@ -62,15 +66,14 @@
   ([id]
     (node nil id)))
 
-(defn edge [attr-map & nodes]
+(defn edge [attr-map & node-ids]
   (reify Dot
     (dot* [this] 
-      (str (apply str (->> nodes
-        (map dot*)
-        (interpose (str " " (:edge-op *options*) " "))))
-       (trailing-attrs attr-map)))))
+      (str 
+        (cs/join (str " " (:edge-op *options*) " ") (map dot* node-ids)) 
+        (trailing-attrs attr-map)))))
 
-(defn options-for-type [type]
+(defn- options-for-type [type]
   (condp = type
     :graph    (assoc *options* :edge-op "--")
     :digraph  (assoc *options* :edge-op "->")
@@ -78,12 +81,14 @@
 
 (defn graph [opts & stmts]
   (let [{:keys [type id strict?]} opts 
-        type (or type :graph)
-        id (or id (gensym "G"))]
+        type (or type :graph)]
     (reify Dot
       (dot* [this]
         (binding [*options* (options-for-type type)] 
-          (str (if strict? "strict ") (name type) " " (escape-id id) " {\n" (dot* (apply statements stmts)) "} "))))))
+          (str (if strict? "strict ") 
+               (name type) " "
+               (if id (str (escape-id id) " ")) 
+               "{\n" (dot* (apply statements stmts)) "} "))))))
 
 (defn digraph [opts & stmts]
   (apply graph (assoc opts :type :digraph) stmts))
@@ -91,24 +96,23 @@
 (defn subgraph [opts & stmts]
   (apply graph (assoc opts :type :subgraph) stmts))
 
-(dot* (attrs {:style :filled :color :blue}))
-(dot* (node-id "start" "p" :ne))
-(dot* (node-id "start" "p"))
-(dot* (statements (node-id :start)(node-id "start" "p")))
-(dot* (node (node-id :start)))
-(dot* (node {:style :filled :color :blue} (node-id :start) ))
-(dot* (edge nil (node-id :start)(node-id :end)))
-(binding [*options* {:edge-op "--"}] 
-  (dot* (edge {:color :grey} (node-id :start)(node-id :middle :p :_)(node-id :end))))
-(dot* (graph-attrs {:style :filled}))
-(dot* (node-attrs {:style :filled, :color :red}))
-(dot* (edge-attrs {:style :filled}))
-(dot* (attr :color :lightgrey))
+(println (dot* (attrs {:style :filled :color :blue :text "foo\"bar"})))
+(println (dot* (node-id "start" "p" :ne)))
+(println (dot* (node-id "start" "p")))
+(println (dot* (statements (node-id :start)(node-id "start" "p"))))
+(println (dot* (node (node-id :start))))
+(println (dot* (node {:style :filled :color :blue} (node-id :start) )))
+(println (dot* (edge nil (node-id :start)(node-id :end))))
+(println (binding [*options* {:edge-op "--"}] 
+  (dot* (edge {:color :grey} (node-id :start)(node-id :middle :p :_)(node-id :end)))))
+(println (dot* (graph-attrs {:style :filled})))
+(println (dot* (node-attrs {:style :filled, :color :red})))
+(println (dot* (edge-attrs {:style :filled})))
+(println (dot* (attr :color :lightgrey)))
 
 (println (dot*
   (graph
-    ;{:id :G :strict? true}
-    nil
+    {:id :G :strict? true}
     (edge nil (node-id "start") (node-id :a0))
     (edge {:color :green} (node-id :a0) 
           (subgraph nil (edge nil (node-id :a) (node-id :b)))
@@ -120,5 +124,6 @@
     ;{:id :G :strict? true}
     nil
     (edge nil (node-id "start") (node-id :a0))
-    (edge {:color :green} (node-id :a0) (node-id :a1))
+    (edge {:color :gre_en :text "hello\"there"} (node-id :a0) (node-id :a1))
     (node {:shape :Mdiamond} (node-id :start)))))
+
