@@ -1,0 +1,23 @@
+http://www.graphviz.org/content/dot-language
+
+X graph   :   [ *strict* ] (*graph* | *digraph*) [ ID ] '{' stmt_list '}'
+X stmt_list   :   [ stmt [ ';' ] [ stmt_list ] ]
+X stmt   :   
+X          node_stmt
+X      |   edge_stmt
+X      |   attr_stmt
+X      |   ID '=' ID
+X      |   subgraph
+X attr_stmt   :   (*graph* | *node* | *edge*) attr_list
+X attr_list   :   '[' [ a_list ] ']' [ attr_list ]
+X a_list   :   ID [ '=' ID ] [ ',' ] [ a_list ]
+X edge_stmt   :   (node_id | subgraph) edgeRHS [ attr_list ]
+X edgeRHS   :   edgeop (node_id | subgraph) [ edgeRHS ]
+X edgeop : '->' | '--'
+X node_stmt   :   node_id [ attr_list ]
+X node_id   :   ID [ port ]
+X port   :   ':' ID [ ':' compass_pt ] 
+          |  ':' compass_pt
+X subgraph   :   [ *subgraph* [ ID ] ] '{' stmt_list '}'
+X compass_pt   :   (n | ne | e | se | s | sw | w | nw | c | _)
+
