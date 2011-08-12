@@ -17,17 +17,18 @@
     :else         (escape-id (str id))))
 
 (declare to-dottable)
-(defprotocol Dot 
+
+(defprotocol Dottable 
   (dot* [this]))
 
 (defn statements [ss]
-  (reify Dot
+  (reify Dottable
     (dot* [this]
       (apply str (map #(str (dot* %) ";\n") ss)))))
 
 (defn node-id 
   ([id port compass-pt]
-    (reify Dot
+    (reify Dottable
       (dot* [this]
         (str (escape-id id) 
             (if port (str ":" (escape-id port)))
@@ -38,12 +39,12 @@
     (node-id id nil nil)))
 
 (defn attr [key val]
-  (reify Dot
+  (reify Dottable
     (dot* [this]
       (str (escape-id key) \= (escape-id val)))))
 
 (defn attrs [options]
-  (reify Dot
+  (reify Dottable
     (dot* [this]
       (cs/join \, (for [[k v] options] (dot* (attr k v)))))))
 
@@ -51,7 +52,7 @@
   (if-not (empty? attr-map) (str " [" (dot* (attrs attr-map)) "]")))
 
 (defn- x-attrs [type options]
-  (reify Dot
+  (reify Dottable
     (dot* [this]
       (str type " [" (dot* (attrs options)) "]"))))
 
@@ -61,14 +62,14 @@
 
 (defn node 
   ([attr-map id]
-    (reify Dot
+    (reify Dottable
       (dot* [this]
         (str (dot* id) (trailing-attrs attr-map)))))
   ([id]
     (node {} id)))
 
 (defn edge [attr-map node-ids]
-  (reify Dot
+  (reify Dottable
     (dot* [this] 
       (str 
         (cs/join (str " " (:edge-op *options*) " ") (map dot* node-ids)) 
@@ -76,14 +77,14 @@
 
 (defn- options-for-type [type]
   (condp = type
-    :graph    (assoc *options* :edge-op "--")
-    :digraph  (assoc *options* :edge-op "->")
-    :subgraph *options*))
+    ::graph    (assoc *options* :edge-op "--")
+    ::digraph  (assoc *options* :edge-op "->")
+    ::subgraph *options*))
 
 (defn graph* [opts stmts]
-  (let [{:keys [type id strict?]} opts 
-        type (or type :graph)]
-    (reify Dot
+  (let [{:keys [type id strict?] 
+         :or   {type ::graph}}     opts]
+    (reify Dottable
       (dot* [this]
         (binding [*options* (options-for-type type)] 
           (str (if strict? "strict ") 
@@ -91,11 +92,9 @@
                (if id (str (escape-id id) " ")) 
                "{\n" (dot* (statements stmts)) "} "))))))
 
-(defn digraph* [opts stmts]
-  (graph* (assoc opts :type :digraph) stmts))
+(defn digraph* [opts stmts]  (graph* (assoc opts :type ::digraph) stmts))
 
-(defn subgraph* [opts stmts]
-  (graph* (assoc opts :type :subgraph) stmts))
+(defn subgraph* [opts stmts] (graph* (assoc opts :type ::subgraph) stmts))
 
 (defn- vector-to-dottable-edge [v]
   (let [end (last v)
@@ -118,32 +117,40 @@
 
 (defn to-dottable [v]
   (cond
-    (satisfies? Dot v) v
+    (satisfies? Dottable v) v
     (keyword? v)       (node-id v)
     (string?  v)       (node-id v)
     (map? v)           (graph-attrs v)
     (vector? v)        (vector-to-dottable v)))
 
-(defn- canonicalize-graph-attrs [attrs]
+(defn- desugar-graph-attrs 
+  "Turn first arg of (graph) into something usable"
+  [attrs]
   (cond
-    (map? attrs) attrs
+    (map? attrs)     attrs
     (keyword? attrs) {:id attrs}
     (number? attrs)  {:id (str attrs)}
     (string? attrs)  {:id attrs}
     :else            (throw (IllegalArgumentException. (str "Invalid graph arg " attrs)))))
 
 (defn graph 
-  ([attrs stmts]
-   (graph* (canonicalize-graph-attrs attrs) (map to-dottable stmts)))
-  ([stmts] (graph {} stmts)))
+  ([handler attrs stmts] (handler (desugar-graph-attrs attrs) (map to-dottable stmts)))
+  ([attrs stmts]         (graph graph* attrs stmts))
+  ([stmts]               (graph {} stmts)))
+
 (defn digraph 
-  ([attrs stmts]
-   (digraph* (canonicalize-graph-attrs attrs) (map to-dottable stmts)))
-  ([stmts] (digraph {} stmts)))
+  ([attrs stmts] (graph digraph* attrs stmts))
+  ([stmts]       (digraph {} stmts)))
+
 (defn subgraph 
-  ([attrs stmts]
-   (subgraph* (canonicalize-graph-attrs attrs) (map to-dottable stmts)))
-  ([stmts] (subgraph {} stmts)))
+  ([attrs stmts] (graph subgraph* attrs stmts))
+  ([stmts]       (subgraph {} stmts)))
+
+(defn dot [input]
+  (cond
+    (satisfies? Dottable input) (dot* input)
+    (vector? input)        (dot* (graph input))
+    :else                  (throw (IllegalArgumentException. (str "Invalid (dot) input: " input)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -180,7 +187,7 @@
      (edge {:color :gre_en :text "hello\"there"} [(node-id :a0) (node-id :a1)])
      (node {:shape :Mdiamond} (node-id :start))])))
 
-(println (dot* (digraph :G [
+(-> (digraph :G [
   (subgraph :cluster_0 [
     {:style :filled, :color :lightgrey, :label "process #1"}
     [:node {:style :filled, :color :white}]
@@ -188,7 +195,7 @@
     [:a0 :> :a1 :> :a2 :> :a3]])
 
   (subgraph :cluster_1 [
-    {:style :filled, :color :blue, :label "process #2"}
+    {:color :blue, :label "process #2"}
     [:node {:style :filled}]
 
     [:b0 :> :b1 :> :b2 :> :b3]])
@@ -202,4 +209,8 @@
   [:b3    :end]
 
   [:start {:shape :Mdiamond}]
-  [:end   {:shape :Msquare}]])))
+  [:end   {:shape :Msquare}]])
+
+  dot
+  println)
+
