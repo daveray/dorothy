@@ -4,7 +4,7 @@
 
 ## Usage
 
-A graph consists of a vector of *statements*.
+A graph consists of a vector of *statements*. The following sections describe the format for all the types of statements. If you're bored, skip ahead to the "Defining Graphs" section below.
 
 ### Node Statement
 A *node statement* defines a node in the graph. It can take two forms:
