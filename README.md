@@ -77,7 +77,7 @@ As mentioned above, a graph consists of a series of statements. These statements
         [:a0 :> :a1 :> :a2 :> :a3]])
 
       (subgraph :cluster_1 [
-        {:style :filled, :color :blue, :label "process #2"}
+        {:color :blue, :label "process #2"}
         [:node {:style :filled}]
 
         [:b0 :> :b1 :> :b2 :> :b3]])
@@ -92,6 +92,10 @@ As mentioned above, a graph consists of a series of statements. These statements
 
       [:start {:shape :Mdiamond}]
       [:end   {:shape :Msquare}]])
+
+This produces this graph:
+
+<img src="https://github.com/downloads/daveray/dorothy/dorothy-show2.png" align="right"/>
 
 Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of these functions takes an initial option map, or a string or keyword id for the graph:
 
