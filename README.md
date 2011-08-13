@@ -1,5 +1,4 @@
 # dorothy
-Dorothy isn't usable yet. Soon.
 
 [Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
@@ -109,6 +108,35 @@ Given a graph built with the functions described above, use the `(dot)` function
     (use 'dorothy.core)
     (def g (graph [ ... ]))
     (dot g)
+    "graph { ... }"
+
+Once you have DOT language output, you can render it as an image using the `(render)` function:
+
+    ; This produces a png as an array of bytes
+    (render graph {:format :png})
+
+    ; This produces an SVG string
+    (render graph {:format :svg})
+
+    ; A one-liner with a very simple 4 node digraph.
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (render {:format :svg}))
+  
+*The dot tool executable must be on the system path*
+
+other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not.
+
+Finally, for simple tests, use the `(show)` function to view the result in a simple Swing viewer:
+
+    ; This opens a simple Swing viewer with the graph
+    (show graph)
+
+    ; A one-liner with a very simple 4 node digraph
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show)
+
+which shows:
+
+<img src="https://github.com/downloads/daveray/dorothy/dorothy-show.png" align="center" />
+
 
 ## License
 
