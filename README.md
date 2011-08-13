@@ -68,6 +68,8 @@ or:
 ## Defining Graphs
 As mentioned above, a graph consists of a series of statements. These statements are passed to the `graph`, `digraph`, or `subgraph` functions. Each takes an optional set of attributes followed by a vector of statements:
 
+<img src="https://github.com/downloads/daveray/dorothy/dorothy-show2.png" align="right"/>
+
     ; From http://www.graphviz.org/content/cluster
     (digraph [
       (subgraph :cluster_0 [
@@ -93,9 +95,6 @@ As mentioned above, a graph consists of a series of statements. These statements
       [:start {:shape :Mdiamond}]
       [:end   {:shape :Msquare}]])
 
-This produces this graph:
-
-<img src="https://github.com/downloads/daveray/dorothy/dorothy-show2.png" align="right"/>
 
 Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of these functions takes an initial option map, or a string or keyword id for the graph:
 
