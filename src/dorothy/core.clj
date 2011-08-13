@@ -264,7 +264,8 @@
 
 (defn show 
   "Show the give graph (must be the string result of (dorothy.core/dot)) in a
-  new Swing window with scrollbars.
+  new Swing window with scrollbars. Supports same options as 
+  (dorothy.core/render) except that :format is ignored.
   
   Examples:
   
@@ -279,8 +280,8 @@
     (dorothy.core/render)
     (dorothy.core/dot)
   "
-  [graph]
-  (let [bytes (render graph {:format :png})
+  [graph & [options]]
+  (let [bytes (render graph (merge options {:format :png}))
         icon  (javax.swing.ImageIcon. bytes)
         w     (.getIconWidth icon)
         h     (.getIconHeight icon)
