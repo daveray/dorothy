@@ -6,6 +6,10 @@
 
 *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
 
+Dorothy is on Clojars. In Leiningen:
+
+    [dorothy "x.y.z"]
+
 A graph consists of a vector of *statements*. The following sections describe the format for all the types of statements. If you're bored, skip ahead to the "Defining Graphs" section below.
 
 ### Node Statement

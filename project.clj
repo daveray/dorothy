@@ -1,4 +1,4 @@
-(defproject dorothy "0.0.1"
+(defproject dorothy "0.0.2-SNAPSHOT"
   :description "Hiccup-style generation of Graphviz graphs"
   :url "https://github.com/daveray/dorothy"
   :license {:name "Eclipse Public License - v 1.0"
