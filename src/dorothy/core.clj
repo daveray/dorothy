@@ -139,8 +139,10 @@
     (satisfies? Dottable v) v
     (keyword? v)       (node-id v)
     (string?  v)       (node-id v)
+    (number?  v)       (node-id (str v))
     (map? v)           (graph-attrs v)
-    (vector? v)        (vector-to-dottable v)))
+    (vector? v)        (vector-to-dottable v)
+    :else              (throw (IllegalArgumentException. (str "Don't know what to do with " v)))))
 
 (defn- desugar-graph-attrs 
   "Turn first arg of (graph) into something usable"
@@ -199,18 +201,21 @@
   (cond
     (satisfies? Dottable input) (dot* input)
     (vector? input)             (dot* (graph input))
+    (list?   input)             (dot* (graph input))
+    (seq?    input)             (dot* (graph input))
     :else                       (throw (IllegalArgumentException. (str "Invalid (dot) input: " input)))))
 
 (defn- build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
     ["dot"
-     (if format (str "-T" (name format)))
-     (if layout (str "-K" (name layout)))
-     (if scale (str "-s" (str scale)))
+     (if format    (str "-T" (name format)))
+     (if layout    (str "-K" (name layout)))
+     (if scale     (str "-s" scale))
      (if invert-y? "-y")]
     (remove nil?)))
 
-(defn- init-process-builder [{:keys [dir] :as options}]
+(defn- ^java.lang.ProcessBuilder init-process-builder 
+  [{:keys [dir] :as options}]
   (let [pb (java.lang.ProcessBuilder. (build-render-command options))]
     (when dir (.directory pb (if (instance? java.io.File dir) dir (java.io.File. (str dir)))))
     pb))
@@ -254,16 +259,36 @@
     http://www.graphviz.org/content/output-formats
   "
   [graph options]
-  (let [pb       (init-process-builder options)
-        p        (.start pb)
-        to-dot   (.getOutputStream p)
+  (let [p        (.start (init-process-builder options))
         from-dot (future (read-dot-result (.getInputStream p) options))]
-    (spit to-dot graph)
-    (.close to-dot)
+    (with-open [to-dot (.getOutputStream p)] 
+      (spit to-dot graph))
     @from-dot))
 
+(defn save
+  "Render and save the given graph (string result of (dorothy.core/dot)) to an
+  output stream. f is any argument acceptable to (clojure.java.io/ouput-stream).
+  
+  Examples:
+    
+    ; Write a graph to a png file
+    (-> (digraph [[:a :b :c]]) 
+        dot 
+        (save \"out.png\" {:format :png}))
+
+  See:
+    (dorothy.core/render)
+    (dorothy.core/dot)
+    http://clojure.github.com/clojure/clojure.java.io-api.html#clojure.java.io/make-output-stream
+"
+  [graph f & [options]]
+  (let [bytes (render graph (merge options {:binary? true}))]
+    (with-open [output (jio/output-stream f)] 
+      (jio/copy bytes output)))
+  graph)
+
 (defn show 
-  "Show the give graph (must be the string result of (dorothy.core/dot)) in a
+  "Show the given graph (must be the string result of (dorothy.core/dot)) in a
   new Swing window with scrollbars. Supports same options as 
   (dorothy.core/render) except that :format is ignored.
   
