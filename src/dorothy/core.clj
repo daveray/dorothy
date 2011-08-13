@@ -1,4 +1,18 @@
-(ns dorothy.core
+; Copyright (c) Dave Ray, 2011. All rights reserved.
+
+; The use and distribution terms for this software are covered by the
+; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+; which can be found in the file epl-v10.html at the root of this
+; distribution.
+; By using this software in any fashion, you are agreeing to be bound by
+; the terms of this license.
+; You must not remove this notice, or any other, from this software.
+
+(ns ^{:doc "A Hiccup-style library for generating graphs with Graphviz.
+           The functions you want are (graph), (digraph), (subgraph), (dot),
+           (render), and (show). See https://github.com/daveray/dorothy."
+      :author "Dave Ray"} 
+  dorothy.core
   (:require [clojure.string :as cs]
             [clojure.java.io :as jio]))
 
@@ -21,10 +35,12 @@
 
 (declare to-dottable)
 
-(defprotocol Dottable 
+(defprotocol ^{:private true} Dottable 
   (dot* [this]))
 
-(defn statements [ss]
+(defn statements 
+  "Construct a Dottable for a list of statements."
+  [ss]
   (reify Dottable
     (dot* [this]
       (apply str (map #(str (dot* %) ";\n") ss)))))
@@ -118,7 +134,7 @@
     (map? v0)     (graph-attrs v0)
     v0            (node (to-dottable v0))))
 
-(defn to-dottable [v]
+(defn- to-dottable [v]
   (cond
     (satisfies? Dottable v) v
     (keyword? v)       (node-id v)
@@ -137,25 +153,54 @@
     :else            (throw (IllegalArgumentException. (str "Invalid graph arg " attrs)))))
 
 (defn graph 
+  "Construct an undirected graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
   ([handler attrs stmts] (handler (desugar-graph-attrs attrs) (map to-dottable stmts)))
   ([attrs stmts]         (graph graph* attrs stmts))
   ([stmts]               (graph {} stmts)))
 
 (defn digraph 
+  "Construct a directed graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
   ([attrs stmts] (graph digraph* attrs stmts))
   ([stmts]       (digraph {} stmts)))
 
 (defn subgraph 
+  "Construct a sub-graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  A subgraph may be used as a statement in a graph, or as a node entry in
+  an edge statement.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
   ([attrs stmts] (graph subgraph* attrs stmts))
   ([stmts]       (subgraph {} stmts)))
 
-(defn dot [input]
+(defn dot 
+  "Convert the given dorothy graph representation to a string suitable for input to
+  the Graphviz dot tool.
+
+  input can either be the result of (graph) or (digraph), or it can be a vector of
+  statements (see README.md) in which case (graph) is implied.
+
+  Examples:
+
+    user=> (dot (digraph [[:a :b :c]]))
+    \"digraph { a -> b -> c; }\"
+ 
+  See:
+    (dorothy.core/render)
+    (dorothy.core/show)
+  "
+  [input]
   (cond
     (satisfies? Dottable input) (dot* input)
     (vector? input)             (dot* (graph input))
     :else                       (throw (IllegalArgumentException. (str "Invalid (dot) input: " input)))))
 
-; http://www.graphviz.org/content/command-line-invocation
 (defn- build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
     ["dot"
@@ -170,7 +215,6 @@
     (when dir (.directory pb (if (instance? java.io.File dir) dir (java.io.File. (str dir)))))
     pb))
 
-; http://www.graphviz.org/content/output-formats
 (def ^{:private true} binary-formats
   #{:bmp :eps :gif :ico :jpg :jpeg :pdf :png :ps :ps2 :svgz :tif :tiff :vmlz :wbmp})
 
@@ -182,7 +226,34 @@
       (.toByteArray result))
     (slurp input-stream)))
 
-(defn render [graph options]
+(defn render 
+  "Render the given graph (must be the string result of (dorothy.core/dot))
+  using the Graphviz 'dot' tool. The 'dot' executable must be on the system
+  path.
+
+  Depending on the requested format (see options below), returns either a string
+  or a Java byte array.
+  
+  options is a map with the following options:
+ 
+    :dir       The working directory in which dot is executed. Defaults to '.'
+    :format    The desired output format, e.g. :png, :svg. If the output format
+               is known to be binary, a byte array is returned.
+    :layout    Dot layout algorithm to use. (-K command-line option)
+    :scale     Input scale, defaults to 72.0. (-s command-line option)
+    :invert-y? If true, y coordinates in output are inverted. (-y command-line option)
+
+  Examples:
+
+    ; Simple 3 node graph, converted to dot and rendered as SVG. 
+    (-> (digraph [[:a :b :c]]) dot (render {:format :svg))
+
+  See:
+    (dorothy.core/dot)
+    http://www.graphviz.org/content/command-line-invocation
+    http://www.graphviz.org/content/output-formats
+  "
+  [graph options]
   (let [pb       (init-process-builder options)
         p        (.start pb)
         to-dot   (.getOutputStream p)
@@ -190,6 +261,36 @@
     (spit to-dot graph)
     (.close to-dot)
     @from-dot))
+
+(defn show 
+  "Show the give graph (must be the string result of (dorothy.core/dot)) in a
+  new Swing window with scrollbars.
+  
+  Examples:
+  
+    ; Simple 3 node graph, converted to dot and displayed.
+    (-> (digraph [[:a :b :c]]) dot show)
+ 
+  Notes:
+    
+    Closing the resulting frame will not cause the JVM to exit.
+
+  See:
+    (dorothy.core/render)
+    (dorothy.core/dot)
+  "
+  [graph]
+  (let [bytes (render graph {:format :png})
+        icon  (javax.swing.ImageIcon. bytes)
+        w     (.getIconWidth icon)
+        h     (.getIconHeight icon)
+        lbl   (javax.swing.JLabel. icon)
+        sp    (javax.swing.JScrollPane. lbl)]
+    (doto (javax.swing.JFrame. (format "Dorothy (%dx%d)" w h))
+      (.setLocationByPlatform true)
+      (.setContentPane sp)
+      (.setSize (min 640 (+ w 50)) (min 480 (+ h 50)))
+      (.setVisible true))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
