@@ -6,6 +6,8 @@
 
 *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
 
+*The Graphviz dot tool executable must be on the system path*
+
 Dorothy is on Clojars. In Leiningen:
 
     [dorothy "x.y.z"]
@@ -110,7 +112,7 @@ Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of th
     (digraph { :id :G :strict? true } ...)
     ; => strict graph G { ... }
     
-## Rendering to Graphviz dot format
+## Generate Graphviz dot format and rendering images
 
 Given a graph built with the functions described above, use the `(dot)` function to generate Graphviz DOT output.
 
@@ -132,7 +134,12 @@ Once you have DOT language output, you can render it as an image using the `(ren
   
 *The dot tool executable must be on the system path*
 
-other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not.
+other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not. 
+
+Alternatively, use the `(save)` function to write to a file or output stream.
+
+    ; A one-liner with a very simple 4 node digraph
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save "out.png" {:format :png}))
 
 Finally, for simple tests, use the `(show)` function to view the result in a simple Swing viewer:
 
