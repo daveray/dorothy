@@ -2,6 +2,8 @@
 
 [Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
+*Dorothy is extremely alpha and subject to radical change.*
+
 ## Usage
 
 *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
@@ -63,7 +65,9 @@ alternatively, this can be expressed as a vector like this:
 
     [:graph {:label "process #1", :style :filled, :color :lightgrey}]
     ; => graph [label="process #1",style=filled,color=lightgrey];
-    
+   
+*Note: I'm not that happy with this. I think maybe just a plain function is best for this rather than trying to jam it into a vector. Input welcome!*
+
 ### Node and Edge Attribute Statement
 A *node attribute* or *edge attribute* statement sets graph-wide node or edge attributes respectively. It is expressed as a vector:
 
@@ -74,6 +78,8 @@ or:
 
     [:edge {:color :black}]
     ; => edge [color=black];
+
+*Note: I'm not that happy with this. I think maybe just a plain function is best for this rather than trying to jam it into a vector. Input welcome!*
 
 ## Defining Graphs
 As mentioned above, a graph consists of a series of statements. These statements are passed to the `graph`, `digraph`, or `subgraph` functions. Each takes an optional set of attributes followed by a vector of statements:
