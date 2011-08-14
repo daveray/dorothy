@@ -16,21 +16,21 @@
   (:require [clojure.string :as cs]
             [clojure.java.io :as jio]))
 
-(def ^:dynamic *options* {:edge-op "->"})
+(def ^{:dynamic true :private true} *options* {:edge-op "->"})
 
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
 
 (defn- safe-id? [s] (re-find safe-id-pattern s))
 (defn- html? [s] (and (.startsWith s "<") (.endsWith s ">")))
-(defn- quote-quotes [s] (cs/replace s "\"" "\\\""))
+(defn- escape-quotes [s] (cs/replace s "\"" "\\\""))
 (defn- escape-id [id]
   (cond
-    (keyword? id) (escape-id (name id))
     (string? id)  (cond 
                     (safe-id? id) id
                     (html? id)    id
-                    :else         (str \" (quote-quotes id) \"))
+                    :else         (str \" (escape-quotes id) \"))
+    (keyword? id) (escape-id (name id))
     :else         (escape-id (str id))))
 
 (declare to-dottable)
@@ -57,12 +57,16 @@
   ([id]
     (node-id id nil nil)))
 
-(defn attr [key val]
+(defn attr 
+  "Returns a Dottable representation of a key/value attribute pair."
+  [key val]
   (reify Dottable
     (dot* [this]
       (str (escape-id key) \= (escape-id val)))))
 
-(defn attrs [options]
+(defn attrs 
+  "Returns a Dottable representation of a list of an attribute map."
+  [options]
   (reify Dottable
     (dot* [this]
       (cs/join \, (for [[k v] options] (dot* (attr k v)))))))
@@ -70,24 +74,54 @@
 (defn- trailing-attrs [attr-map]
   (if-not (empty? attr-map) (str " [" (dot* (attrs attr-map)) "]")))
 
-(defn- x-attrs [type options]
+(defn- x-attrs 
+  [type options]
   (reify Dottable
     (dot* [this]
       (str type " [" (dot* (attrs options)) "]"))))
 
-(def graph-attrs (partial x-attrs "graph"))
-(def node-attrs  (partial x-attrs "node"))
-(def edge-attrs  (partial x-attrs "edge"))
+(def ^{:doc "Create a Dottable graph attribute statement in a graph. This is a
+            more structured version of the [:graph { attrs }] sugar for
+            specifying attributes for a graph. Its result may be used in place
+            of that sugar within a graph specification."} 
+  graph-attrs (partial x-attrs "graph"))
+
+(def ^{:doc "Create a Dottable node attribute statement in a graph. This is a
+            more structured version of the [:node { attrs }] sugar for
+            specifying attributes for nodes. Its result may be used in place
+            of that sugar within a graph specification."} 
+  node-attrs  (partial x-attrs "node"))
+
+(def ^{:doc "Create a Dottable edge attribute statement in a graph. This is a
+            more structured version of the [:edge { attrs }] sugar for
+            specifying attributes for edges. Its result may be used in place
+            of that sugar within a graph specification."} 
+  edge-attrs  (partial x-attrs "edge"))
 
 (defn node 
-  ([attr-map id]
+  "Create a Dottable node in a graph. This is a more structures version of the
+  :node-id or [:node-id { attrs }] sugar for specifying nodes in a graph. Its
+  result may be used in place of that sugar within a graph specification.
+  
+  attr-map is a possibly empty map of attributes for the edge
+  id is the result of (dorothy.core/node-id)"
+  [attr-map id]
     (reify Dottable
       (dot* [this]
         (str (dot* id) (trailing-attrs attr-map)))))
-  ([id]
-    (node {} id)))
 
-(defn edge [attr-map node-ids]
+(defn edge 
+  "Create a Dottable edge. This is a more structured version of the 
+  [:source :target] sugar for specifying edges. Its result may be used in place
+  of that sugar within a graph specification.
+  
+  attr-map is a possibly empty map of attributes for the edge.
+  node-ids is a seq of 2 or more *Dottable* node identifiers.
+  
+  See:
+    (dorothy.core/node-id)
+  "
+  [attr-map node-ids]
   (reify Dottable
     (dot* [this] 
       (str 
@@ -101,8 +135,7 @@
     ::subgraph *options*))
 
 (defn graph* [opts stmts]
-  (let [{:keys [type id strict?] 
-         :or   {type ::graph}}     opts]
+  (let [{:keys [type id strict?] :or {type ::graph}} opts]
     (reify Dottable
       (dot* [this]
         (binding [*options* (options-for-type type)] 
@@ -132,7 +165,7 @@
     (map? v1)     (node v1 (to-dottable v0))
     v1            (vector-to-dottable-edge v)
     (map? v0)     (graph-attrs v0)
-    v0            (node (to-dottable v0))))
+    v0            (node {} (to-dottable v0))))
 
 (defn- parse-node-id [v]
   (apply node-id (cs/split v #":")))
@@ -329,7 +362,7 @@
   (println (dot* (node-id "start" "p" :ne)))
   (println (dot* (node-id "start" "p")))
   (println (dot* (statements [(node-id :start)(node-id "start" "p")])))
-  (println (dot* (node (node-id :start))))
+  (println (dot* (node {} (node-id :start))))
   (println (dot* (node {:style :filled :color :blue} (node-id :start) )))
   (println (dot* (edge {} [(node-id :start)(node-id :end)])))
   (println (binding [*options* {:edge-op "--"}] 

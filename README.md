@@ -23,7 +23,7 @@ A *node statement* defines a node in the graph. It can take two forms:
     
     [node-id { attr map }]
 
-where `node-id` is a string or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
+where `node-id` is a string, number or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
 
     :node0          ; Define a node called "node0"
 
@@ -35,6 +35,8 @@ the node's attr map is a map of attributes for the node. For example,
 
     [:start {:shape :Mdiamond}]
     ; => start [shape=Mdiamond];
+
+Dorothy will correctly escape and quote node-ids as required by dot.
 
 ### Edge Statement
 An *edge statement* defines an edge in the graph. It is expressed as a vector with two or more node-ids followed optional attribute map:
