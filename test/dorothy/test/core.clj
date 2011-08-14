@@ -9,8 +9,8 @@
   (testing "quotes ids with special chars"
     (is (= "\"_abc123!\"" (#'dorothy.core/escape-id :_abc123!)))
     (is (= "\"_ab\\\"c123\"" (#'dorothy.core/escape-id "_ab\"c123"))))
-  (testing "does nothing to HTML"
-    (is (= "<html></html>" (#'dorothy.core/escape-id "<html></html>")))))
+  (testing "surrounds HTML with <>"
+    (is (= "<<html></html>>" (#'dorothy.core/escape-id "<html></html>")))))
 
 (deftest test-attr
   (testing "escapes key and value"

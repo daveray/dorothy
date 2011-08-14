@@ -28,7 +28,7 @@
   (cond
     (string? id)  (cond 
                     (safe-id? id) id
-                    (html? id)    id
+                    (html? id)    (str \< id \>)
                     :else         (str \" (escape-quotes id) \"))
     (keyword? id) (escape-id (name id))
     :else         (escape-id (str id))))
