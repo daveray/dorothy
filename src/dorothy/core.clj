@@ -134,12 +134,15 @@
     (map? v0)     (graph-attrs v0)
     v0            (node (to-dottable v0))))
 
+(defn- parse-node-id [v]
+  (apply node-id (cs/split v #":")))
+
 (defn- to-dottable [v]
   (cond
     (satisfies? Dottable v) v
-    (keyword? v)       (node-id v)
-    (string?  v)       (node-id v)
-    (number?  v)       (node-id (str v))
+    (keyword? v)       (parse-node-id (name v))
+    (string?  v)       (parse-node-id v)
+    (number?  v)       (parse-node-id (str v))
     (map? v)           (graph-attrs v)
     (vector? v)        (vector-to-dottable v)
     :else              (throw (IllegalArgumentException. (str "Don't know what to do with " v)))))
