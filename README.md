@@ -2,7 +2,7 @@
 
 [Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
-*Dorothy is extremely alpha and subject to radical change.*
+*Dorothy is extremely alpha and subject to radical change. [Release Notes Here] (https://github.com/daveray/dorothy/wiki)*
 
 ## Usage
 
