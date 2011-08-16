@@ -20,11 +20,12 @@
 
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
+(def ^:private html-pattern #"^\s*<([a-zA-Z1-9_-]+)(\s|>).*</\1>\s*$")
 
 (defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
 
 (defn- safe-id? [s] (re-find safe-id-pattern s))
-(defn- html? [s] (and (.startsWith s "<") (.endsWith s ">")))
+(defn- html? [s] (re-find html-pattern s))
 (defn- escape-quotes [s] (cs/replace s "\"" "\\\""))
 (defn- escape-id [id]
   (cond

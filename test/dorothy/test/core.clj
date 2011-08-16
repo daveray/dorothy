@@ -12,6 +12,13 @@
   (testing "surrounds HTML with <>"
     (is (= "<<html></html>>" (#'dorothy.core/escape-id "<html></html>")))))
 
+(deftest html?-can-detect-html-looking-stuff
+  (is (#'dorothy.core/html? "<html></html>"))
+  (is (#'dorothy.core/html? "  <table border=9></table>  "))
+  (is (#'dorothy.core/html? "<html><foo/>  <bar></html>"))
+  (is (not (#'dorothy.core/html? "<html></html")))
+  (is (not (#'dorothy.core/html? "<html</html>"))))
+
 (deftest test-attr
   (testing "escapes key and value"
     (is (= "_123=\"hello there\"" (dot* (attr :_123 "hello there"))))))
