@@ -23,3 +23,9 @@
   (testing "escapes key and value"
     (is (= "_123=\"hello there\"" (dot* (attr :_123 "hello there"))))))
 
+(deftest test-node-id
+  (testing "checks compass point"
+    (is (thrown? RuntimeException (node-id :a :b :x)))
+    (are [pt] (node-id :a :b pt) 
+      :n :ne :e :se :s :sw :w :nw :c :_
+      "n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_")))

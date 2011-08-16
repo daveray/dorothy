@@ -48,13 +48,20 @@
     (dot* [this]
       (apply str (map #(str (dot* %) ";\n") ss)))))
 
+(def ^{:private true} compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
+(defn- check-compass-pt [pt]
+  (if (or (nil? pt) (compass-pts (name pt)))
+    pt
+    (error "Invalid compass point %s" pt)))
+
 (defn node-id 
   ([id port compass-pt]
-    (reify Dottable
-      (dot* [this]
-        (str (escape-id id) 
-            (if port (str ":" (escape-id port)))
-            (if compass-pt (str ":" (name compass-pt)))))))
+    (let [compass-pt (check-compass-pt compass-pt)] 
+      (reify Dottable
+        (dot* [this]
+          (str (escape-id id) 
+              (if port (str ":" (escape-id port)))
+              (if compass-pt (str ":" (name compass-pt))))))))
   ([id port]
     (node-id id port nil))
   ([id]
@@ -152,11 +159,11 @@
 (defn subgraph* [opts stmts] (graph* (assoc opts :type ::subgraph) stmts))
 
 (defn- vector-to-dottable-edge [v]
-  (let [end (last v)
+  (let [end    (last v)
         attrs? (map? end)
-        attrs (if attrs? end {})
-        parts (if attrs? (butlast v) v)
-        parts (remove #{:>} parts)]
+        attrs  (if attrs? end {})
+        parts  (if attrs? (butlast v) v)
+        parts  (remove #{:>} parts)]
     (edge attrs (map to-dottable parts))))
 
 (defn- vector-to-dottable [[v0 v1 & more :as v]]
