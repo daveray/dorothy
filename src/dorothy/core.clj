@@ -269,7 +269,6 @@
 (def ^{:private true} binary-formats
   #{:bmp :eps :gif :ico :jpg :jpeg :pdf :png :ps :ps2 :svgz :tif :tiff :vmlz :wbmp})
 
-;(-> (digraph :G [[:a :b] [:b :c]]) dot (render {}))
 (defn- read-dot-result [input-stream {:keys [format binary?]}]
   (if (or binary? (binary-formats format))
     (let [result (java.io.ByteArrayOutputStream.)] 
@@ -306,7 +305,8 @@
   "
   [graph options]
   (let [p        (.start (init-process-builder options))
-        from-dot (future (read-dot-result (.getInputStream p) options))]
+        from-dot (future (with-open [from-dot (.getInputStream p)] 
+                           (read-dot-result from-dot options)))]
     (with-open [to-dot (.getOutputStream p)] 
       (spit to-dot graph))
     @from-dot))
