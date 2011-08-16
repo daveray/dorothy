@@ -21,6 +21,8 @@
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
 
+(defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+
 (defn- safe-id? [s] (re-find safe-id-pattern s))
 (defn- html? [s] (and (.startsWith s "<") (.endsWith s ">")))
 (defn- escape-quotes [s] (cs/replace s "\"" "\\\""))
@@ -178,7 +180,7 @@
     (number?  v)       (parse-node-id (str v))
     (map? v)           (graph-attrs v)
     (vector? v)        (vector-to-dottable v)
-    :else              (throw (IllegalArgumentException. (str "Don't know what to do with " v)))))
+    :else              (error "Don't know what to do with %s" v)))
 
 (defn- desugar-graph-attrs 
   "Turn first arg of (graph) into something usable"
@@ -188,7 +190,7 @@
     (keyword? attrs) {:id attrs}
     (number? attrs)  {:id (str attrs)}
     (string? attrs)  {:id attrs}
-    :else            (throw (IllegalArgumentException. (str "Invalid graph arg " attrs)))))
+    :else            (error "Invalid graph arg %s" attrs)))
 
 (defn graph 
   "Construct an undirected graph from the given statements which must be a vector.
@@ -239,7 +241,7 @@
     (vector? input)             (dot* (graph input))
     (list?   input)             (dot* (graph input))
     (seq?    input)             (dot* (graph input))
-    :else                       (throw (IllegalArgumentException. (str "Invalid (dot) input: " input)))))
+    :else                       (error "Invalid (dot) input: %s" input)))
 
 (defn- build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
