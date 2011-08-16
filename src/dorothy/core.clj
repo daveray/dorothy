@@ -158,9 +158,9 @@
 
 (defn- vector-to-dottable [[v0 v1 & more :as v]]
   (cond
-    (= v0 :graph) (graph-attrs v1)
-    (= v0 :node)  (node-attrs  v1)
-    (= v0 :edge)  (edge-attrs  v1)
+    ;(= v0 :graph) (graph-attrs v1)
+    ;(= v0 :node)  (node-attrs  v1)
+    ;(= v0 :edge)  (edge-attrs  v1)
     more          (vector-to-dottable-edge v)
     (map? v1)     (node v1 (to-dottable v0))
     v1            (vector-to-dottable-edge v)

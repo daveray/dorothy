@@ -56,30 +56,27 @@ For readability, `:>` delimiters may be optionally included in an edge statement
 
 ### Graph Attribute Statement
 
-A *graph attribute* statement sets graph-wide attributes. It is expressed as a map:
+A *graph attribute* statement sets graph-wide attributes. It is expressed as a single map:
 
     {:label "process #1", :style :filled, :color :lightgrey}
     ; => graph [label="process #1",style=filled,color=lightgrey];
 
-alternatively, this can be expressed as a vector like this:
+alternatively, this can be expressed with the `(graph-attrs)` function like this:
 
-    [:graph {:label "process #1", :style :filled, :color :lightgrey}]
+    (graph-attrs {:label "process #1", :style :filled, :color :lightgrey})
     ; => graph [label="process #1",style=filled,color=lightgrey];
    
-*Note: I'm not that happy with this. I think maybe just a plain function is best for this rather than trying to jam it into a vector. Input welcome!*
-
 ### Node and Edge Attribute Statement
-A *node attribute* or *edge attribute* statement sets graph-wide node or edge attributes respectively. It is expressed as a vector:
+A *node attribute* or *edge attribute* statement sets node or edge attributes respectively for all nodes and edge statements that follow. It is expressed with `(node-attrs)` and `(edge-attrs)` statements:
 
-    [:node {:style :filled, :color :white}]
+    (node-attrs {:style :filled, :color :white})
     ; => node [style=filled,color=white];
 
 or:
 
-    [:edge {:color :black}]
+    (edge-attrs {:color :black})
     ; => edge [color=black];
 
-*Note: I'm not that happy with this. I think maybe just a plain function is best for this rather than trying to jam it into a vector. Input welcome!*
 
 ## Defining Graphs
 As mentioned above, a graph consists of a series of statements. These statements are passed to the `graph`, `digraph`, or `subgraph` functions. Each takes an optional set of attributes followed by a vector of statements:
@@ -90,13 +87,13 @@ As mentioned above, a graph consists of a series of statements. These statements
     (digraph [
       (subgraph :cluster_0 [
         {:style :filled, :color :lightgrey, :label "process #1"}
-        [:node {:style :filled, :color :white}]
+        (node-attrs {:style :filled, :color :white})
 
         [:a0 :> :a1 :> :a2 :> :a3]])
 
       (subgraph :cluster_1 [
         {:color :blue, :label "process #2"}
-        [:node {:style :filled}]
+        (node-attrs {:style :filled})
 
         [:b0 :> :b1 :> :b2 :> :b3]])
 
