@@ -10,7 +10,7 @@
 
 (ns ^{:doc "A Hiccup-style library for generating graphs with Graphviz.
            The functions you want are (graph), (digraph), (subgraph), (dot),
-           (render), and (show). See https://github.com/daveray/dorothy."
+           (render), (save!) and (show!). See https://github.com/daveray/dorothy."
       :author "Dave Ray"} 
   dorothy.core
   (:require [clojure.string :as cs]
@@ -241,7 +241,8 @@
  
   See:
     (dorothy.core/render)
-    (dorothy.core/show)
+    (dorothy.core/show!)
+    (dorothy.core/save!)
   "
   [input]
   (cond
@@ -311,7 +312,7 @@
       (spit to-dot graph))
     @from-dot))
 
-(defn save
+(defn save!
   "Render and save the given graph (string result of (dorothy.core/dot)) to an
   output stream. f is any argument acceptable to (clojure.java.io/ouput-stream).
   
@@ -320,7 +321,7 @@
     ; Write a graph to a png file
     (-> (digraph [[:a :b :c]]) 
         dot 
-        (save \"out.png\" {:format :png}))
+        (save! \"out.png\" {:format :png}))
 
   See:
     (dorothy.core/render)
@@ -333,7 +334,7 @@
       (jio/copy bytes output)))
   graph)
 
-(defn show 
+(defn show! 
   "Show the given graph (must be the string result of (dorothy.core/dot)) in a
   new Swing window with scrollbars. Supports same options as 
   (dorothy.core/render) except that :format is ignored.
@@ -341,7 +342,7 @@
   Examples:
   
     ; Simple 3 node graph, converted to dot and displayed.
-    (-> (digraph [[:a :b :c]]) dot show)
+    (-> (digraph [[:a :b :c]]) dot show!)
  
   Notes:
     

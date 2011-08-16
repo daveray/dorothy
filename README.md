@@ -141,18 +141,18 @@ Once you have DOT language output, you can render it as an image using the `(ren
 
 other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not. 
 
-Alternatively, use the `(save)` function to write to a file or output stream.
+Alternatively, use the `(save!)` function to write to a file or output stream.
 
     ; A one-liner with a very simple 4 node digraph
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save "out.png" {:format :png}))
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save! "out.png" {:format :png}))
 
-Finally, for simple tests, use the `(show)` function to view the result in a simple Swing viewer:
+Finally, for simple tests, use the `(show!)` function to view the result in a simple Swing viewer:
 
     ; This opens a simple Swing viewer with the graph
-    (show graph)
+    (show! graph)
 
     ; A one-liner with a very simple 4 node digraph
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show)
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show!)
 
 which shows:
 

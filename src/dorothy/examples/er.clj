@@ -50,5 +50,5 @@
        :fontsize 20}
       ])
     dot
-    (show {:layout :neato}))) 
+    (show! {:layout :neato}))) 
 
