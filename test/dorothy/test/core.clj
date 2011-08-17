@@ -19,10 +19,6 @@
   (is (not (#'dorothy.core/html? "<html></html")))
   (is (not (#'dorothy.core/html? "<html</html>"))))
 
-(deftest test-attr
-  (testing "escapes key and value"
-    (is (= "_123=\"hello there\"" (dot* (attr :_123 "hello there"))))))
-
 (deftest test-node-id
   (testing "checks compass point"
     (is (thrown? RuntimeException (node-id :a :b :x)))

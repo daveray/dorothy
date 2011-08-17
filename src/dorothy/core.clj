@@ -16,13 +16,173 @@
   (:require [clojure.string :as cs]
             [clojure.java.io :as jio]))
 
+(defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+
+(declare to-ast)
+
+(def ^{:private true} compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
+(defn- check-compass-pt [pt]
+  (if (or (nil? pt) (compass-pts (name pt)))
+    pt
+    (error "Invalid compass point %s" pt)))
+
+(defn node-id 
+  "Create a node-id."
+  ([id port compass-pt]
+    { ::type ::node-id :id id :port port :compass-pt (check-compass-pt compass-pt) })
+  ([id port]
+    (node-id id port nil))
+  ([id]
+    (node-id id nil nil)))
+
+(defn- x-attrs [type attrs] { ::type type :attrs attrs})
+
+(defn graph-attrs 
+  "Create a graph attribute statement in a graph. This is a
+   more structured version of the [:graph { attrs }] sugar for
+   specifying attributes for a graph. Its result may be used in place
+   of that sugar within a graph specification."
+  [attrs]
+  { ::type ::graph-attrs :attrs attrs })
+
+(defn node-attrs
+  "Create a node attribute statement in a graph. This is a
+  more structured version of the [:node { attrs }] sugar for
+  specifying attributes for nodes. Its result may be used in place
+  of that sugar within a graph specification."
+  [attrs]
+  { ::type ::node-attrs :attrs attrs })
+
+(defn edge-attrs 
+  "Create a edge attribute statement in a graph. This is a
+  more structured version of the [:edge { attrs }] sugar for
+  specifying attributes for edges. Its result may be used in place
+  of that sugar within a graph specification."
+  [attrs]
+  { ::type ::edge-attrs :attrs attrs })
+
+(defn node 
+  "Create a node in a graph. This is a more structured version of the
+  :node-id or [:node-id { attrs }] sugar for specifying nodes in a graph. Its
+  result may be used in place of that sugar within a graph specification.
+  
+  attrs is a possibly empty map of attributes for the edge
+  id is the result of (dorothy.core/node-id)"
+  [attrs id]
+  { ::type ::node :attrs attrs :id id })
+
+(defn edge 
+  "Create an edge. This is a more structured version of the 
+  [:source :target] sugar for specifying edges. Its result may be used in place
+  of that sugar within a graph specification.
+  
+  attrs is a possibly empty map of attributes for the edge.
+  node-ids is a seq of 2 or more node identifiers.
+  
+  See:
+    (dorothy.core/node-id)
+  "
+  [attrs node-ids]
+  { ::type ::edge :attrs attrs :node-ids node-ids })
+
+(defn graph* 
+  "graph AST helper"
+  [opts statements]
+  (let [{:keys [id strict?]} opts]
+    { ::type ::graph :id id :strict? strict? :statements statements }))
+
+(derive ::digraph ::graph)
+(derive ::subgraph ::graph)
+
+(defn digraph* 
+  "digraph AST helper"
+  [opts statements]  (assoc (graph* opts statements) ::type ::digraph))
+
+(defn subgraph* 
+  "subgraph AST helper"
+  [opts statements] (assoc (graph* opts statements) ::type ::subgraph))
+
+(defn is-ast? [v]
+  (and (map? v) (contains? v ::type)))
+
+(defn- vector-to-ast-edge [v]
+  (let [end    (last v)
+        attrs? (map? end)
+        attrs  (if attrs? end {})
+        parts  (if attrs? (butlast v) v)
+        parts  (remove #{:>} parts)]
+    (edge attrs (map to-ast parts))))
+
+(defn- vector-to-ast [[v0 v1 & more :as v]]
+  (cond
+    ;(= v0 :graph) (graph-attrs v1)
+    ;(= v0 :node)  (node-attrs  v1)
+    ;(= v0 :edge)  (edge-attrs  v1)
+    more          (vector-to-ast-edge v)
+    (map? v1)     (node v1 (to-ast v0))
+    v1            (vector-to-ast-edge v)
+    (map? v0)     (graph-attrs v0)
+    v0            (node {} (to-ast v0))))
+
+(defn- parse-node-id [v]
+  (apply node-id (cs/split v #":")))
+
+(defn- to-ast [v]
+  (cond
+    (is-ast? v)  v
+    (keyword? v) (parse-node-id (name v))
+    (string?  v) (parse-node-id v)
+    (number?  v) (parse-node-id (str v))
+    (map? v)     (graph-attrs v)
+    (vector? v)  (vector-to-ast v)
+    :else        (error "Don't know what to do with %s" v)))
+
+(defn- desugar-graph-options 
+  "Turn first arg of (graph) into something usable"
+  [options]
+  (cond
+    (map? options)     options
+    (keyword? options) {:id options}
+    (number? options)  {:id (str options)}
+    (string? options)  {:id options}
+    :else            (error "Invalid graph arg %s" options)))
+
+(defn graph 
+  "Construct an undirected graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
+  ([handler options statements] (handler (desugar-graph-options options) (map to-ast statements)))
+  ([options statements]         (graph graph* options statements))
+  ([statements]               (graph {} statements)))
+
+(defn digraph 
+  "Construct a directed graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
+  ([attrs statements] (graph digraph* attrs statements))
+  ([statements]       (digraph {} statements)))
+
+(defn subgraph 
+  "Construct a sub-graph from the given statements which must be a vector.
+  See https://github.com/daveray/dorothy or README.md for details of the DSL.
+  A subgraph may be used as a statement in a graph, or as a node entry in
+  an edge statement.
+  
+  The returned value may be converted to dot language with (dorothy.core/dot)."
+  ([attrs statements] (graph subgraph* attrs statements))
+  ([statements]       (subgraph {} statements)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; DOT generation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def ^{:dynamic true :private true} *options* {:edge-op "->"})
 
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
-(def ^:private html-pattern #"^\s*<([a-zA-Z1-9_-]+)(\s|>).*</\1>\s*$")
-
-(defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+(def ^:private html-pattern    #"^\s*<([a-zA-Z1-9_-]+)(\s|>).*</\1>\s*$")
 
 (defn- safe-id? [s] (re-find safe-id-pattern s))
 (defn- html? [s] (re-find html-pattern s))
@@ -36,107 +196,39 @@
     (keyword? id) (escape-id (name id))
     :else         (escape-id (str id))))
 
-(declare to-dottable)
+(defmulti dot* ::type)
 
-(defprotocol ^{:private true} Dottable 
-  (dot* [this]))
+(defn- dot*-statements [statements]
+  (apply str (interleave (map dot* statements) (repeat ";\n"))))
 
-(defn statements 
-  "Construct a Dottable for a list of statements."
-  [ss]
-  (reify Dottable
-    (dot* [this]
-      (apply str (map #(str (dot* %) ";\n") ss)))))
+(defmethod dot* ::node-id [{:keys [id port compass-pt]}]
+  (str 
+    (escape-id id) 
+    (if port (str ":" (escape-id port)))
+    (if compass-pt (str ":" (name compass-pt)))))
 
-(def ^{:private true} compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
-(defn- check-compass-pt [pt]
-  (if (or (nil? pt) (compass-pts (name pt)))
-    pt
-    (error "Invalid compass point %s" pt)))
+(defn dot*-attrs [attrs]
+  (cs/join 
+    \, 
+    (for [[k v] attrs] (str (escape-id k) \= (escape-id v)))))
 
-(defn node-id 
-  ([id port compass-pt]
-    (let [compass-pt (check-compass-pt compass-pt)] 
-      (reify Dottable
-        (dot* [this]
-          (str (escape-id id) 
-              (if port (str ":" (escape-id port)))
-              (if compass-pt (str ":" (name compass-pt))))))))
-  ([id port]
-    (node-id id port nil))
-  ([id]
-    (node-id id nil nil)))
+(defn- dot*-trailing-attrs [attrs]
+  (if-not (empty? attrs) (str " [" (dot*-attrs attrs) "]")))
 
-(defn attr 
-  "Returns a Dottable representation of a key/value attribute pair."
-  [key val]
-  (reify Dottable
-    (dot* [this]
-      (str (escape-id key) \= (escape-id val)))))
+(defn dot*-x-attrs [type {:keys [attrs]}]
+  (str type " [" (dot*-attrs attrs) "]"))
 
-(defn attrs 
-  "Returns a Dottable representation of a list of an attribute map."
-  [options]
-  (reify Dottable
-    (dot* [this]
-      (cs/join \, (for [[k v] options] (dot* (attr k v)))))))
+(defmethod dot* ::graph-attrs [this] (dot*-x-attrs "graph" this))
+(defmethod dot* ::node-attrs  [this] (dot*-x-attrs "node" this))
+(defmethod dot* ::edge-attrs  [this] (dot*-x-attrs "edge" this))
 
-(defn- trailing-attrs [attr-map]
-  (if-not (empty? attr-map) (str " [" (dot* (attrs attr-map)) "]")))
+(defmethod dot* ::node [{:keys [attrs id]}]
+  (str (dot* id) (dot*-trailing-attrs attrs)))
 
-(defn- x-attrs 
-  [type options]
-  (reify Dottable
-    (dot* [this]
-      (str type " [" (dot* (attrs options)) "]"))))
-
-(def ^{:doc "Create a Dottable graph attribute statement in a graph. This is a
-            more structured version of the [:graph { attrs }] sugar for
-            specifying attributes for a graph. Its result may be used in place
-            of that sugar within a graph specification."} 
-  graph-attrs (partial x-attrs "graph"))
-
-(def ^{:doc "Create a Dottable node attribute statement in a graph. This is a
-            more structured version of the [:node { attrs }] sugar for
-            specifying attributes for nodes. Its result may be used in place
-            of that sugar within a graph specification."} 
-  node-attrs  (partial x-attrs "node"))
-
-(def ^{:doc "Create a Dottable edge attribute statement in a graph. This is a
-            more structured version of the [:edge { attrs }] sugar for
-            specifying attributes for edges. Its result may be used in place
-            of that sugar within a graph specification."} 
-  edge-attrs  (partial x-attrs "edge"))
-
-(defn node 
-  "Create a Dottable node in a graph. This is a more structures version of the
-  :node-id or [:node-id { attrs }] sugar for specifying nodes in a graph. Its
-  result may be used in place of that sugar within a graph specification.
-  
-  attr-map is a possibly empty map of attributes for the edge
-  id is the result of (dorothy.core/node-id)"
-  [attr-map id]
-    (reify Dottable
-      (dot* [this]
-        (str (dot* id) (trailing-attrs attr-map)))))
-
-(defn edge 
-  "Create a Dottable edge. This is a more structured version of the 
-  [:source :target] sugar for specifying edges. Its result may be used in place
-  of that sugar within a graph specification.
-  
-  attr-map is a possibly empty map of attributes for the edge.
-  node-ids is a seq of 2 or more *Dottable* node identifiers.
-  
-  See:
-    (dorothy.core/node-id)
-  "
-  [attr-map node-ids]
-  (reify Dottable
-    (dot* [this] 
-      (str 
-        (cs/join (str " " (:edge-op *options*) " ") (map dot* node-ids)) 
-        (trailing-attrs attr-map)))))
+(defmethod dot* ::edge [{:keys [attrs node-ids]}] 
+  (str 
+    (cs/join (str " " (:edge-op *options*) " ") (map dot* node-ids)) 
+    (dot*-trailing-attrs attrs)))
 
 (defn- options-for-type [type]
   (condp = type
@@ -144,88 +236,12 @@
     ::digraph  (assoc *options* :edge-op "->")
     ::subgraph *options*))
 
-(defn graph* [opts stmts]
-  (let [{:keys [type id strict?] :or {type ::graph}} opts]
-    (reify Dottable
-      (dot* [this]
-        (binding [*options* (options-for-type type)] 
-          (str (if strict? "strict ") 
-               (name type) " "
-               (if id (str (escape-id id) " ")) 
-               "{\n" (dot* (statements stmts)) "} "))))))
-
-(defn digraph* [opts stmts]  (graph* (assoc opts :type ::digraph) stmts))
-
-(defn subgraph* [opts stmts] (graph* (assoc opts :type ::subgraph) stmts))
-
-(defn- vector-to-dottable-edge [v]
-  (let [end    (last v)
-        attrs? (map? end)
-        attrs  (if attrs? end {})
-        parts  (if attrs? (butlast v) v)
-        parts  (remove #{:>} parts)]
-    (edge attrs (map to-dottable parts))))
-
-(defn- vector-to-dottable [[v0 v1 & more :as v]]
-  (cond
-    ;(= v0 :graph) (graph-attrs v1)
-    ;(= v0 :node)  (node-attrs  v1)
-    ;(= v0 :edge)  (edge-attrs  v1)
-    more          (vector-to-dottable-edge v)
-    (map? v1)     (node v1 (to-dottable v0))
-    v1            (vector-to-dottable-edge v)
-    (map? v0)     (graph-attrs v0)
-    v0            (node {} (to-dottable v0))))
-
-(defn- parse-node-id [v]
-  (apply node-id (cs/split v #":")))
-
-(defn- to-dottable [v]
-  (cond
-    (satisfies? Dottable v) v
-    (keyword? v)       (parse-node-id (name v))
-    (string?  v)       (parse-node-id v)
-    (number?  v)       (parse-node-id (str v))
-    (map? v)           (graph-attrs v)
-    (vector? v)        (vector-to-dottable v)
-    :else              (error "Don't know what to do with %s" v)))
-
-(defn- desugar-graph-attrs 
-  "Turn first arg of (graph) into something usable"
-  [attrs]
-  (cond
-    (map? attrs)     attrs
-    (keyword? attrs) {:id attrs}
-    (number? attrs)  {:id (str attrs)}
-    (string? attrs)  {:id attrs}
-    :else            (error "Invalid graph arg %s" attrs)))
-
-(defn graph 
-  "Construct an undirected graph from the given statements which must be a vector.
-  See https://github.com/daveray/dorothy or README.md for details of the DSL.
-  
-  The returned value may be converted to dot language with (dorothy.core/dot)."
-  ([handler attrs stmts] (handler (desugar-graph-attrs attrs) (map to-dottable stmts)))
-  ([attrs stmts]         (graph graph* attrs stmts))
-  ([stmts]               (graph {} stmts)))
-
-(defn digraph 
-  "Construct a directed graph from the given statements which must be a vector.
-  See https://github.com/daveray/dorothy or README.md for details of the DSL.
-  
-  The returned value may be converted to dot language with (dorothy.core/dot)."
-  ([attrs stmts] (graph digraph* attrs stmts))
-  ([stmts]       (digraph {} stmts)))
-
-(defn subgraph 
-  "Construct a sub-graph from the given statements which must be a vector.
-  See https://github.com/daveray/dorothy or README.md for details of the DSL.
-  A subgraph may be used as a statement in a graph, or as a node entry in
-  an edge statement.
-  
-  The returned value may be converted to dot language with (dorothy.core/dot)."
-  ([attrs stmts] (graph subgraph* attrs stmts))
-  ([stmts]       (subgraph {} stmts)))
+(defmethod dot* ::graph [{:keys [id strict? statements] :as this}]
+  (binding [*options* (options-for-type (::type this))] 
+    (str (if strict? "strict ") 
+          (name (::type this)) " "
+          (if id (str (escape-id id) " ")) 
+          "{\n" (dot*-statements statements) "} ")))
 
 (defn dot 
   "Convert the given dorothy graph representation to a string suitable for input to
@@ -246,11 +262,14 @@
   "
   [input]
   (cond
-    (satisfies? Dottable input) (dot* input)
+    (is-ast? input) (dot* input)
     (vector? input)             (dot* (graph input))
     (list?   input)             (dot* (graph input))
     (seq?    input)             (dot* (graph input))
     :else                       (error "Invalid (dot) input: %s" input)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
@@ -369,10 +388,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment (do
-  (println (dot* (attrs {:style :filled :color :blue :text "foo\"bar"})))
   (println (dot* (node-id "start" "p" :ne)))
   (println (dot* (node-id "start" "p")))
-  (println (dot* (statements [(node-id :start)(node-id "start" "p")])))
   (println (dot* (node {} (node-id :start))))
   (println (dot* (node {:style :filled :color :blue} (node-id :start) )))
   (println (dot* (edge {} [(node-id :start)(node-id :end)])))
@@ -381,7 +398,6 @@
   (println (dot* (graph-attrs {:style :filled})))
   (println (dot* (node-attrs {:style :filled, :color :red})))
   (println (dot* (edge-attrs {:style :filled})))
-  (println (dot* (attr :color :lightgrey)))
 
   (println (dot*
     (graph*
