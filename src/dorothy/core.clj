@@ -8,6 +8,173 @@
 ; the terms of this license.
 ; You must not remove this notice, or any other, from this software.
 
+;; # dorothy
+;; 
+;; [Hiccup-style](https://github.com/weavejester/hiccup) generation of [Graphviz](http://www.graphviz.org/) graphs in Clojure.
+;; 
+;; *Dorothy is extremely alpha and subject to radical change. [Release Notes Here](https://github.com/daveray/dorothy/wiki)*
+;; 
+;; ## Usage
+;; 
+;; *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
+;; 
+;; *The Graphviz `dot` tool executable must be on the system path*
+;; 
+;; Dorothy is on Clojars. In Leiningen:
+;; 
+;;     [dorothy "x.y.z"]
+;; 
+;; A graph consists of a vector of *statements*. The following sections describe the format for all the types of statements. If you're bored, skip ahead to the "Defining Graphs" section below.
+;; 
+;; ### Node Statement
+;; A *node statement* defines a node in the graph. It can take two forms:
+;; 
+;;     node-id
+;; 
+;;     [node-id]
+;;     
+;;     [node-id { attr map }]
+;; 
+;; where `node-id` is a string, number or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
+;; 
+;;     :node0          ; Define a node called "node0"
+;; 
+;;     :node0:port0    ; Define a node called "node0" with port "port0"
+;; 
+;;     :node0:port0:sw ; Similarly a node with southwest compass point 
+;; 
+;; the node's attr map is a map of attributes for the node. For example,
+;; 
+;;     [:start {:shape :Mdiamond}]
+;;     ; => start [shape=Mdiamond];
+;; 
+;; Dorothy will correctly escape and quote node-ids as required by dot.
+;; 
+;; ### Edge Statement
+;; An *edge statement* defines an edge in the graph. It is expressed as a vector with two or more node-ids followed optional attribute map:
+;; 
+;;     [node-id0 node-id1 ... node-idN { attr map }]
+;;     ; => "node-id0" -> "node-id1" -> ... -> "node-idN" [attrs ...];
+;; 
+;; In addition to node ids, an edge statement may also contain subgraphs:
+;; 
+;;     [:start (subgraph [... subgraph statements ...])]
+;; 
+;; For readability, `:>` delimiters may be optionally included in an edge statement:
+;; 
+;;     [:start :> :middle :> :end]
+;; 
+;; ### Graph Attribute Statement
+;; 
+;; A *graph attribute* statement sets graph-wide attributes. It is expressed as a single map:
+;; 
+;;     {:label "process #1", :style :filled, :color :lightgrey}
+;;     ; => graph [label="process #1",style=filled,color=lightgrey];
+;; 
+;; alternatively, this can be expressed with the `(graph-attrs)` function like this:
+;; 
+;;     (graph-attrs {:label "process #1", :style :filled, :color :lightgrey})
+;;     ; => graph [label="process #1",style=filled,color=lightgrey];
+;;    
+;; ### Node and Edge Attribute Statement
+;; A *node attribute* or *edge attribute* statement sets node or edge attributes respectively for all nodes and edge statements that follow. It is expressed with `(node-attrs)` and `(edge-attrs)` statements:
+;; 
+;;     (node-attrs {:style :filled, :color :white})
+;;     ; => node [style=filled,color=white];
+;; 
+;; or:
+;; 
+;;     (edge-attrs {:color :black})
+;;     ; => edge [color=black];
+;; 
+;; 
+;; ## Defining Graphs
+;; As mentioned above, a graph consists of a series of statements. These statements are passed to the `graph`, `digraph`, or `subgraph` functions. Each takes an optional set of attributes followed by a vector of statements:
+;; 
+;; 
+;;     ; From http://www.graphviz.org/content/cluster
+;;     (digraph [
+;;       (subgraph :cluster_0 [
+;;         {:style :filled, :color :lightgrey, :label "process #1"}
+;;         (node-attrs {:style :filled, :color :white})
+;; 
+;;         [:a0 :> :a1 :> :a2 :> :a3]])
+;; 
+;;       (subgraph :cluster_1 [
+;;         {:color :blue, :label "process #2"}
+;;         (node-attrs {:style :filled})
+;; 
+;;         [:b0 :> :b1 :> :b2 :> :b3]])
+;; 
+;;       [:start :a0]
+;;       [:start :b0]
+;;       [:a1    :b3]
+;;       [:b2    :a3]
+;;       [:a3    :a0]
+;;       [:a3    :end]
+;;       [:b3    :end]
+;; 
+;;       [:start {:shape :Mdiamond}]
+;;       [:end   {:shape :Msquare}]])
+;; 
+;; ![Sample](https://github.com/downloads/daveray/dorothy/dorothy-show2.png)
+;; 
+;; Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of these functions takes an initial option map, or a string or keyword id for the graph:
+;; 
+;;     (graph :graph-id ...)
+;;     ; => graph "graph-id" { ... }
+;;     
+;;     (digraph { :id :G :strict? true } ...)
+;;     ; => strict graph G { ... }
+;;     
+;; ## Generate Graphviz dot format and rendering images
+;; 
+;; Given a graph built with the functions described above, use the `(dot)` function to generate Graphviz DOT output.
+;; 
+;;     (use 'dorothy.core)
+;;     (def g (graph [ ... ]))
+;;     (dot g)
+;;     "graph { ... }"
+;; 
+;; Once you have DOT language output, you can render it as an image using the `(render)` function:
+;; 
+;;     ; This produces a png as an array of bytes
+;;     (render graph {:format :png})
+;; 
+;;     ; This produces an SVG string
+;;     (render graph {:format :svg})
+;; 
+;;     ; A one-liner with a very simple 4 node digraph.
+;;     (-> (digraph [ [:a :b :c] [:b :d] ]) dot (render {:format :svg}))
+;;   
+;; *The dot tool executable must be on the system path*
+;; 
+;; other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not. 
+;; 
+;; Alternatively, use the `(save!)` function to write to a file or output stream.
+;; 
+;;     ; A one-liner with a very simple 4 node digraph
+;;     (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save! "out.png" {:format :png}))
+;; 
+;; Finally, for simple tests, use the `(show!)` function to view the result in a simple Swing viewer:
+;; 
+;;     ; This opens a simple Swing viewer with the graph
+;;     (show! graph)
+;; 
+;;     ; A one-liner with a very simple 4 node digraph
+;;     (-> (digraph [ [:a :b :c] [:b :d] ]) dot show!)
+;; 
+;; which shows:
+;; 
+;; ![Sample](https://github.com/downloads/daveray/dorothy/dorothy-show.png)
+;; 
+;; 
+;; ## License
+;; 
+;; Copyright (C) 2011 Dave Ray
+;; 
+;; Distributed under the Eclipse Public License, the same as Clojure.
+
 (ns ^{:doc "A Hiccup-style library for generating graphs with Graphviz.
            The functions you want are (graph), (digraph), (subgraph), (dot),
            (render), (save!) and (show!). See https://github.com/daveray/dorothy."
@@ -16,11 +183,34 @@
   (:require [clojure.string :as cs]
             [clojure.java.io :as jio]))
 
+;; ---------------------------------------------------------------------- 
+;; # Utilities
+;;
+;; You know.
+
 (defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+
+;; ---------------------------------------------------------------------- 
+;; # Graphviz DOT AST
+;;
+;; Dorothy represents the unrendered graph with an Abstract Syntax Tree (AST).
+;; Each node in the tree is a map with a `::type` key and other keys that vary
+;; based on the node type.
 
 (declare to-ast)
 
 (defn is-ast? 
+  "Returns true if v is an AST node, i.e. has ::type. The second form
+  checks for a particular type.
+  
+  Examples:
+    
+    (is-ast? {::type ::node})
+    ;=> true
+   
+    (is-ast? {::type ::node} ::node)
+    ;=> true
+  "
   ([v] (and (map? v) (contains? v ::type)))
   ([v type] (and (is-ast? v) (= type (::type v)))))
 
@@ -36,7 +226,13 @@
     (error "Invalid compass point %s" pt)))
 
 (defn node-id 
-  "Create a node-id."
+  "Create a node-id. Creates an AST node with ::type ::node-id
+  
+  Examples:
+
+    (node-id :foo)
+    ;=> {:dorothy.core/type :dorothy.core/node-id :id :foo}
+  "
   ([id port compass-pt]
     { ::type ::node-id :id id :port port :compass-pt (check-compass-pt compass-pt) })
   ([id port]
@@ -47,26 +243,35 @@
 (defn- x-attrs [type attrs] { ::type type :attrs attrs})
 
 (defn graph-attrs 
-  "Create a graph attribute statement in a graph. This is a
-   more structured version of the [:graph { attrs }] sugar for
-   specifying attributes for a graph. Its result may be used in place
-   of that sugar within a graph specification."
+  "Create a graph attribute statement. attrs is the attribute map.
+  
+  Examples:
+  
+    (graph-attrs {:label \"hi\"})
+    ;=> {:dorothy.core/type :dorothy.core/graph-attrs :attrs {:label \"hi\"}
+  "
   [attrs]
   { ::type ::graph-attrs :attrs attrs })
 
 (defn node-attrs
-  "Create a node attribute statement in a graph. This is a
-  more structured version of the [:node { attrs }] sugar for
-  specifying attributes for nodes. Its result may be used in place
-  of that sugar within a graph specification."
+  "Create a node attribute statement. attrs is the attribute map.
+  
+  Examples:
+  
+    (node-attrs {:label \"hi\"})
+    ;=> {:dorothy.core/type :dorothy.core/node-attrs :attrs {:label \"hi\"}
+  "
   [attrs]
   { ::type ::node-attrs :attrs attrs })
 
 (defn edge-attrs 
-  "Create a edge attribute statement in a graph. This is a
-  more structured version of the [:edge { attrs }] sugar for
-  specifying attributes for edges. Its result may be used in place
-  of that sugar within a graph specification."
+  "Create a edge attribute statement. attrs is the attribute map.
+  
+  Examples:
+  
+    (edge-attrs {:label \"hi\"})
+    ;=> {:dorothy.core/type :dorothy.core/edge-attrs :attrs {:label \"hi\"}
+  "
   [attrs]
   { ::type ::edge-attrs :attrs attrs })
 
@@ -97,7 +302,10 @@
   { ::type ::edge :attrs attrs :node-ids node-ids })
 
 (defn graph* 
-  "graph AST helper"
+  "Create a graph AST node with type `:dorothy.core/graph`.
+  
+  opts is an option map with keys `:id` and `:strict?`
+  statements is a list of statement AST nodes."
   [opts statements]
   (let [{:keys [id strict?]} opts]
     { ::type ::graph :id id :strict? (boolean strict?) :statements statements }))
@@ -106,12 +314,17 @@
 (derive ::subgraph ::graph)
 
 (defn digraph* 
-  "digraph AST helper"
+  "Same as `(dorothy.core/graph*)` but has type `:dorothy.core/digraph`"
   [opts statements]  (assoc (graph* opts statements) ::type ::digraph))
 
 (defn subgraph* 
-  "subgraph AST helper"
+  "Same as `(dorothy.core/graph*)` but has type `:dorothy.core/subgraph`"
   [opts statements] (assoc (graph* opts statements) ::type ::subgraph))
+
+;; ---------------------------------------------------------------------- 
+;; # Dorothy Graph DSL Processing
+;;
+;; Implements the graph DSL described above.
 
 (defn- vector-to-ast-edge [v]
   (let [end    (last v)
@@ -182,9 +395,10 @@
   ([attrs statements] (graph subgraph* attrs statements))
   ([statements]       (subgraph {} statements)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; DOT generation
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ---------------------------------------------------------------------- 
+;; # DOT generation
+;;
+;; Generate DOT language from a graph AST.
 
 (def ^{:dynamic true :private true} *options* {:edge-op "->"})
 
@@ -252,7 +466,7 @@
           "{\n" (dot*-statements statements) "} ")))
 
 (defn dot 
-  "Convert the given dorothy graph representation to a string suitable for input to
+  "Convert the given Dorothy graph AST to a string suitable for input to
   the Graphviz dot tool.
 
   input can either be the result of (graph) or (digraph), or it can be a vector of
@@ -264,9 +478,9 @@
     \"digraph { a -> b -> c; }\"
  
   See:
-    (dorothy.core/render)
-    (dorothy.core/show!)
-    (dorothy.core/save!)
+  * `(dorothy.core/render)`
+  * `(dorothy.core/show!)`
+  * `(dorothy.core/save!)`
   "
   [input]
   (cond
@@ -278,6 +492,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ---------------------------------------------------------------------- 
+;; # Graph Rendering
+;; Functions responsible for taking a DOT language graph and rendering it
+;; to an image.
 
 (defn- build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
@@ -327,9 +546,10 @@
     (-> (digraph [[:a :b :c]]) dot (render {:format :svg))
 
   See:
-    (dorothy.core/dot)
-    http://www.graphviz.org/content/command-line-invocation
-    http://www.graphviz.org/content/output-formats
+
+  * (dorothy.core/dot)
+  * http://www.graphviz.org/content/command-line-invocation
+  * http://www.graphviz.org/content/output-formats
   "
   [graph options]
   (let [p        (.start (init-process-builder options))
@@ -351,9 +571,10 @@
         (save! \"out.png\" {:format :png}))
 
   See:
-    (dorothy.core/render)
-    (dorothy.core/dot)
-    http://clojure.github.com/clojure/clojure.java.io-api.html#clojure.java.io/make-output-stream
+
+  * (dorothy.core/render)
+  * (dorothy.core/dot)
+  * http://clojure.github.com/clojure/clojure.java.io-api.html#clojure.java.io/make-output-stream
 "
   [graph f & [options]]
   (let [bytes (render graph (merge options {:binary? true}))]
@@ -373,11 +594,12 @@
  
   Notes:
     
-    Closing the resulting frame will not cause the JVM to exit.
+  * Closing the resulting frame will not cause the JVM to exit.
 
   See:
-    (dorothy.core/render)
-    (dorothy.core/dot)
+
+  * `(dorothy.core/render)`
+  * `(dorothy.core/dot)`
   "
   [graph & [options]]
   (let [bytes (render graph (merge options {:format :png}))
@@ -394,6 +616,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ---------------------------------------------------------------------- 
+;; # Random tests
 
 (comment (do
   (println (dot* (node-id "start" "p" :ne)))

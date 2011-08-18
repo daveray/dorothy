@@ -6,4 +6,5 @@
             :distribution :repo
             :comments "same as Clojure"}
   :dependencies [[org.clojure/clojure "1.2.1"]]
-  :dev-dependencies [[lein-clojars "0.6.0"]])
+  :dev-dependencies [[lein-clojars "0.6.0"]
+                     [lein-marginalia "0.6.0"]])
