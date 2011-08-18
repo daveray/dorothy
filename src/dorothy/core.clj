@@ -20,6 +20,15 @@
 
 (declare to-ast)
 
+(defn is-ast? 
+  ([v] (and (map? v) (contains? v ::type)))
+  ([v type] (and (is-ast? v) (= type (::type v)))))
+
+(defn- check-ast [v type]
+  (if-not (is-ast? v type)
+    (error "Expected AST node of type %s" type)))
+
+
 (def ^{:private true} compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
 (defn- check-compass-pt [pt]
   (if (or (nil? pt) (compass-pts (name pt)))
@@ -69,6 +78,7 @@
   attrs is a possibly empty map of attributes for the edge
   id is the result of (dorothy.core/node-id)"
   [attrs id]
+  (check-ast id ::node-id)
   { ::type ::node :attrs attrs :id id })
 
 (defn edge 
@@ -83,13 +93,14 @@
     (dorothy.core/node-id)
   "
   [attrs node-ids]
+  (doseq [n node-ids] (check-ast n ::node-id))
   { ::type ::edge :attrs attrs :node-ids node-ids })
 
 (defn graph* 
   "graph AST helper"
   [opts statements]
   (let [{:keys [id strict?]} opts]
-    { ::type ::graph :id id :strict? strict? :statements statements }))
+    { ::type ::graph :id id :strict? (boolean strict?) :statements statements }))
 
 (derive ::digraph ::graph)
 (derive ::subgraph ::graph)
@@ -101,9 +112,6 @@
 (defn subgraph* 
   "subgraph AST helper"
   [opts statements] (assoc (graph* opts statements) ::type ::subgraph))
-
-(defn is-ast? [v]
-  (and (map? v) (contains? v ::type)))
 
 (defn- vector-to-ast-edge [v]
   (let [end    (last v)
