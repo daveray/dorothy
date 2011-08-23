@@ -2,9 +2,17 @@
 
 [Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
+*Dorothy is extremely alpha and subject to radical change. [Release Notes Here] (https://github.com/daveray/dorothy/wiki)*
+
 ## Usage
 
 *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
+
+*The Graphviz dot tool executable must be on the system path*
+
+Dorothy is on Clojars. In Leiningen:
+
+    [dorothy "x.y.z"]
 
 A graph consists of a vector of *statements*. The following sections describe the format for all the types of statements. If you're bored, skip ahead to the "Defining Graphs" section below.
 
@@ -17,7 +25,7 @@ A *node statement* defines a node in the graph. It can take two forms:
     
     [node-id { attr map }]
 
-where `node-id` is a string or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
+where `node-id` is a string, number or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
 
     :node0          ; Define a node called "node0"
 
@@ -29,6 +37,8 @@ the node's attr map is a map of attributes for the node. For example,
 
     [:start {:shape :Mdiamond}]
     ; => start [shape=Mdiamond];
+
+Dorothy will correctly escape and quote node-ids as required by dot.
 
 ### Edge Statement
 An *edge statement* defines an edge in the graph. It is expressed as a vector with two or more node-ids followed optional attribute map:
@@ -46,26 +56,27 @@ For readability, `:>` delimiters may be optionally included in an edge statement
 
 ### Graph Attribute Statement
 
-A *graph attribute* statement sets graph-wide attributes. It is expressed as a map:
+A *graph attribute* statement sets graph-wide attributes. It is expressed as a single map:
 
     {:label "process #1", :style :filled, :color :lightgrey}
     ; => graph [label="process #1",style=filled,color=lightgrey];
 
-alternatively, this can be expressed as a vector like this:
+alternatively, this can be expressed with the `(graph-attrs)` function like this:
 
-    [:graph {:label "process #1", :style :filled, :color :lightgrey}]
+    (graph-attrs {:label "process #1", :style :filled, :color :lightgrey})
     ; => graph [label="process #1",style=filled,color=lightgrey];
-    
+   
 ### Node and Edge Attribute Statement
-A *node attribute* or *edge attribute* statement sets graph-wide node or edge attributes respectively. It is expressed as a vector:
+A *node attribute* or *edge attribute* statement sets node or edge attributes respectively for all nodes and edge statements that follow. It is expressed with `(node-attrs)` and `(edge-attrs)` statements:
 
-    [:node {:style :filled, :color :white}]
+    (node-attrs {:style :filled, :color :white})
     ; => node [style=filled,color=white];
 
 or:
 
-    [:edge {:color :black}]
+    (edge-attrs {:color :black})
     ; => edge [color=black];
+
 
 ## Defining Graphs
 As mentioned above, a graph consists of a series of statements. These statements are passed to the `graph`, `digraph`, or `subgraph` functions. Each takes an optional set of attributes followed by a vector of statements:
@@ -76,13 +87,13 @@ As mentioned above, a graph consists of a series of statements. These statements
     (digraph [
       (subgraph :cluster_0 [
         {:style :filled, :color :lightgrey, :label "process #1"}
-        [:node {:style :filled, :color :white}]
+        (node-attrs {:style :filled, :color :white})
 
         [:a0 :> :a1 :> :a2 :> :a3]])
 
       (subgraph :cluster_1 [
         {:color :blue, :label "process #2"}
-        [:node {:style :filled}]
+        (node-attrs {:style :filled})
 
         [:b0 :> :b1 :> :b2 :> :b3]])
 
@@ -106,7 +117,7 @@ Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of th
     (digraph { :id :G :strict? true } ...)
     ; => strict graph G { ... }
     
-## Rendering to Graphviz dot format
+## Generate Graphviz dot format and rendering images
 
 Given a graph built with the functions described above, use the `(dot)` function to generate Graphviz DOT output.
 
@@ -128,15 +139,20 @@ Once you have DOT language output, you can render it as an image using the `(ren
   
 *The dot tool executable must be on the system path*
 
-other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not.
+other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not. 
 
-Finally, for simple tests, use the `(show)` function to view the result in a simple Swing viewer:
-
-    ; This opens a simple Swing viewer with the graph
-    (show graph)
+Alternatively, use the `(save!)` function to write to a file or output stream.
 
     ; A one-liner with a very simple 4 node digraph
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show)
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save! "out.png" {:format :png}))
+
+Finally, for simple tests, use the `(show!)` function to view the result in a simple Swing viewer:
+
+    ; This opens a simple Swing viewer with the graph
+    (show! graph)
+
+    ; A one-liner with a very simple 4 node digraph
+    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show!)
 
 which shows:
 
