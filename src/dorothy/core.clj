@@ -49,6 +49,12 @@
 ;;     ; => start [shape=Mdiamond];
 ;; 
 ;; Dorothy will correctly escape and quote node-ids as required by dot.
+;;
+;; A node id can also be auto-generated with `(gen-id object)`.
+;;
+;;     [(gen-id some-object) {:label (.getText some-object)}]
+;;
+;; It allows you to use arbitrary objects as nodes.
 ;; 
 ;; ### Edge Statement
 ;; An *edge statement* defines an edge in the graph. It is expressed as a vector with two or more node-ids followed optional attribute map:
@@ -189,6 +195,37 @@
 ;; You know.
 
 (defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+
+;; ---------------------------------------------------------------------- 
+;; # Id Generation
+
+(defn gen-id 
+  "Node ids are expected to be keywords or strings. Sometimes you have an object
+  graph where the nodes don't have obvious keyword or string ids. Pass the object
+  to (gen-id) and a consisten unique id will be generated for the object when the
+  graph is generated.
+  
+  Notes:
+    Assume the return value of this function is opaque. The impl will change.
+ 
+  See:
+    (dorothy.core/gen-id?)
+  "
+  [target] 
+  (constantly target))
+
+(defn gen-id? 
+  "Returns true if the target was created with (dorothy.core/gen-id)"
+  [target] (fn? target)) ; hrmmm.
+
+(defn- id-generator []
+  (let [id-map (atom {})]
+    (fn [target]
+      (if-let [id (get @id-map target)]
+        id
+        (let [id (str (gensym))]
+          (swap! id-map assoc target id)
+          id)))))
 
 ;; ---------------------------------------------------------------------- 
 ;; # Graphviz DOT AST
@@ -336,14 +373,12 @@
 
 (defn- vector-to-ast [[v0 v1 & more :as v]]
   (cond
-    ;(= v0 :graph) (graph-attrs v1)
-    ;(= v0 :node)  (node-attrs  v1)
-    ;(= v0 :edge)  (edge-attrs  v1)
-    more          (vector-to-ast-edge v)
-    (map? v1)     (node v1 (to-ast v0))
-    v1            (vector-to-ast-edge v)
-    (map? v0)     (graph-attrs v0)
-    v0            (node {} (to-ast v0))))
+    more         (vector-to-ast-edge v)
+    (map? v1)    (node v1 (to-ast v0))
+    v1           (vector-to-ast-edge v)
+    (map? v0)    (graph-attrs v0)
+    (gen-id? v0) (node {} (node-id v0))
+    v0           (node {} (to-ast v0))))
 
 (defn- parse-node-id [v]
   (apply node-id (cs/split v #":")))
@@ -354,6 +389,7 @@
     (keyword? v) (parse-node-id (name v))
     (string?  v) (parse-node-id v)
     (number?  v) (parse-node-id (str v))
+    (gen-id?  v) (node-id v)
     (map? v)     (graph-attrs v)
     (vector? v)  (vector-to-ast v)
     :else        (error "Don't know what to do with %s" v)))
@@ -400,7 +436,7 @@
 ;;
 ;; Generate DOT language from a graph AST.
 
-(def ^{:dynamic true :private true} *options* {:edge-op "->"})
+(def ^{:dynamic true :private true} *options* {:edge-op "->" :id-generator (fn [v] (-> v hash str))})
 
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
@@ -416,7 +452,8 @@
                     (html? id)    (str \< id \>)
                     :else         (str \" (escape-quotes id) \"))
     (keyword? id) (escape-id (name id))
-    :else         (escape-id (str id))))
+    (gen-id? id)  (escape-id ((:id-generator *options*) (id)))
+    :else         (error "Invalid id: %s" (class id))))
 
 (defmulti dot* ::type)
 
@@ -459,7 +496,9 @@
     ::subgraph *options*))
 
 (defmethod dot* ::graph [{:keys [id strict? statements] :as this}]
-  (binding [*options* (options-for-type (::type this))] 
+  (binding [*options* (merge 
+                        (options-for-type (::type this))
+                        {:id-generator (id-generator)})] 
     (str (if strict? "strict ") 
           (name (::type this)) " "
           (if id (str (escape-id id) " ")) 

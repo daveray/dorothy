@@ -40,6 +40,12 @@ the node's attr map is a map of attributes for the node. For example,
 
 Dorothy will correctly escape and quote node-ids as required by dot.
 
+A node id can also be auto-generated with `(gen-id object)`. For example,
+
+    [(gen-id some-object) {:label (.getText some-object)}]
+
+It allows you to use arbitrary objects as nodes.
+
 ### Edge Statement
 An *edge statement* defines an edge in the graph. It is expressed as a vector with two or more node-ids followed optional attribute map:
 
