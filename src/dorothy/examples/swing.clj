@@ -32,9 +32,9 @@
     :else (.getSimpleName (class v))))
 
 (defn node-and-edges [p]
-  (cons 
+  (cons
     [(gen-id p) {:label (label-for p)}]
-    (concat 
+    (concat
       (for [c (.getComponents p)] [(gen-id c) :> (gen-id p)])
       (mapcat node-and-edges (.getComponents p)))))
 
