@@ -451,6 +451,7 @@
                     (safe-id? id) id
                     (html? id)    (str \< id \>)
                     :else         (str \" (escape-quotes id) \"))
+    (number? id)  (str id)
     (keyword? id) (escape-id (name id))
     (gen-id? id)  (escape-id ((:id-generator *options*) (id)))
     :else         (error "Invalid id: %s - %s" (class id) id)))
