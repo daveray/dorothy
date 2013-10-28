@@ -12,8 +12,8 @@
 (ns dorothy.examples.er
   (:use dorothy.core))
 
-(defn -main [] 
-  (-> 
+(defn -main []
+  (->
     (graph :ER [
       {:rankdir :LR}
 
@@ -24,12 +24,12 @@
       (node-attrs {:shape :ellipse})
 
       (subgraph [
-        [:node {:label "name"}] 
+        [:node {:label "name"}]
         :name0 :name1 :name2])
 
       :code :grade :number
 
-      (node-attrs {:shape :diamond :style :filled :color :lightgrey}) 
+      (node-attrs {:shape :diamond :style :filled :color :lightgrey})
       "C-I" "S-C" "S-I"
 
       ; Edges
@@ -50,5 +50,5 @@
        :fontsize 20}
       ])
     dot
-    (show! {:layout :neato}))) 
+    (show! {:layout :neato})))
 
