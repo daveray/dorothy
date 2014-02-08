@@ -622,6 +622,9 @@
       (jio/copy bytes output)))
   graph)
 
+
+(def ^:private shortcut-mask (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
+(def ^:private close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask))
 (defn show!
   "Show the given graph (must be the string result of (dorothy.core/dot)) in a
   new Swing window with scrollbars. Supports same options as
@@ -647,8 +650,14 @@
         w     (.getIconWidth icon)
         h     (.getIconHeight icon)
         lbl   (javax.swing.JLabel. icon)
-        sp    (javax.swing.JScrollPane. lbl)]
-    (doto (javax.swing.JFrame. (format "Dorothy (%dx%d)" w h))
+        sp    (javax.swing.JScrollPane. lbl)
+        frame (javax.swing.JFrame. (format "Dorothy (%dx%d)" w h))]
+    (.. sp getInputMap (put close-key "closeWindow"))
+    (.. sp getActionMap (put "closeWindow" (proxy [javax.swing.AbstractAction] []
+                                             (actionPerformed [e]
+                                               (.setVisible frame false)
+                                               (.dispose frame)))))
+    (doto frame
       (.setLocationByPlatform true)
       (.setContentPane sp)
       (.setSize (min 640 (+ w 50)) (min 480 (+ h 50)))
