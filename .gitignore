@@ -5,8 +5,10 @@ pom.xml.asc
 /classes/
 .lein-failures
 .lein-deps-sum
+.lein-repl-history
+.nrepl-port
 *.swp
 *.swo
 .DS_Store
-autodoc/**
-target/**
+/autodoc/
+/target/
