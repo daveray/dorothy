@@ -38,7 +38,8 @@
       (for [c (.getComponents p)] [(gen-id c) :> (gen-id p)])
       (mapcat node-and-edges (.getComponents p)))))
 
-(-> (digraph :Swing (node-and-edges widgets))
-  dot
-  show!)
+(defn -main [& args]
+  (-> (digraph :Swing (node-and-edges widgets))
+      dot
+      show!))
 

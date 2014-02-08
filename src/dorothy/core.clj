@@ -1,4 +1,4 @@
-; Copyright (c) Dave Ray, 2011. All rights reserved.
+; Copyright (c) Dave Ray, 2014. All rights reserved.
 
 ; The use and distribution terms for this software are covered by the
 ; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
@@ -177,24 +177,28 @@
 ;;
 ;; ## License
 ;;
-;; Copyright (C) 2011 Dave Ray
+;; Copyright (C) 2014 Dave Ray
 ;;
 ;; Distributed under the Eclipse Public License, the same as Clojure.
 
-(ns ^{:doc "A Hiccup-style library for generating graphs with Graphviz.
+(ns dorothy.core
+  {:doc "A Hiccup-style library for generating graphs with Graphviz.
            The functions you want are (graph), (digraph), (subgraph), (dot),
            (render), (save!) and (show!). See https://github.com/daveray/dorothy."
       :author "Dave Ray"}
-  dorothy.core
   (:require [clojure.string :as cs]
             [clojure.java.io :as jio]))
+
+(set! *warn-on-reflection* true)
 
 ;; ----------------------------------------------------------------------
 ;; # Utilities
 ;;
 ;; You know.
 
-(defn- error [fmt & args] (throw (RuntimeException. (apply format fmt args))))
+(defn ^:private error
+  [fmt & args]
+  (throw (RuntimeException. ^String (apply format fmt args))))
 
 ;; ----------------------------------------------------------------------
 ;; # Id Generation
@@ -218,7 +222,7 @@
   "Returns true if the target was created with (dorothy.core/gen-id)"
   [target] (fn? target)) ; hrmmm.
 
-(defn- id-generator []
+(defn ^:private id-generator []
   (let [id-map (atom {})]
     (fn [target]
       (if-let [id (get @id-map target)]
@@ -251,13 +255,13 @@
   ([v] (and (map? v) (contains? v ::type)))
   ([v type] (and (is-ast? v) (= type (::type v)))))
 
-(defn- check-ast [v type]
+(defn ^:private check-ast [v type]
   (if-not (is-ast? v type)
     (error "Expected AST node of type %s" type)))
 
 
-(def ^{:private true} compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
-(defn- check-compass-pt [pt]
+(def ^:private compass-pts #{"n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_"})
+(defn ^:private check-compass-pt [pt]
   (if (or (nil? pt) (compass-pts (name pt)))
     pt
     (error "Invalid compass point %s" pt)))
@@ -277,7 +281,7 @@
   ([id]
     (node-id id nil nil)))
 
-(defn- x-attrs [type attrs] { ::type type :attrs attrs})
+(defn ^:private x-attrs [type attrs] { ::type type :attrs attrs})
 
 (defn graph-attrs
   "Create a graph attribute statement. attrs is the attribute map.
@@ -363,7 +367,7 @@
 ;;
 ;; Implements the graph DSL described above.
 
-(defn- vector-to-ast-edge [v]
+(defn ^:private vector-to-ast-edge [v]
   (let [end    (last v)
         attrs? (map? end)
         attrs  (if attrs? end {})
@@ -371,7 +375,7 @@
         parts  (remove #{:>} parts)]
     (edge attrs (map to-ast parts))))
 
-(defn- vector-to-ast [[v0 v1 & more :as v]]
+(defn ^:private vector-to-ast [[v0 v1 & more :as v]]
   (cond
     more         (vector-to-ast-edge v)
     (map? v1)    (node v1 (to-ast v0))
@@ -380,10 +384,10 @@
     (gen-id? v0) (node {} (node-id v0))
     v0           (node {} (to-ast v0))))
 
-(defn- parse-node-id [v]
+(defn ^:private parse-node-id [v]
   (apply node-id (cs/split v #":")))
 
-(defn- to-ast [v]
+(defn ^:private to-ast [v]
   (cond
     (is-ast? v)  v
     (keyword? v) (parse-node-id (name v))
@@ -394,7 +398,7 @@
     (vector? v)  (vector-to-ast v)
     :else        (error "Don't know what to do with %s" v)))
 
-(defn- desugar-graph-options
+(defn ^:private desugar-graph-options
   "Turn first arg of (graph) into something usable"
   [options]
   (cond
@@ -442,10 +446,10 @@
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
 (def ^:private html-pattern    #"^\s*<([a-zA-Z1-9_-]+)(\s|>).*</\1>\s*$")
 
-(defn- safe-id? [s] (re-find safe-id-pattern s))
-(defn- html? [s] (re-find html-pattern s))
-(defn- escape-quotes [s] (cs/replace s "\"" "\\\""))
-(defn- escape-id [id]
+(defn ^:private safe-id? [s] (re-find safe-id-pattern s))
+(defn ^:private html? [s] (re-find html-pattern s))
+(defn ^:private escape-quotes [s] (cs/replace s "\"" "\\\""))
+(defn ^:private escape-id [id]
   (cond
     (string? id)  (cond
                     (safe-id? id) id
@@ -458,7 +462,7 @@
 
 (defmulti dot* ::type)
 
-(defn- dot*-statements [statements]
+(defn ^:private dot*-statements [statements]
   (apply str (interleave (map dot* statements) (repeat ";\n"))))
 
 (defmethod dot* ::node-id [{:keys [id port compass-pt]}]
@@ -472,7 +476,7 @@
     \,
     (for [[k v] attrs] (str (escape-id k) \= (escape-id v)))))
 
-(defn- dot*-trailing-attrs [attrs]
+(defn ^:private dot*-trailing-attrs [attrs]
   (if-not (empty? attrs) (str " [" (dot*-attrs attrs) "]")))
 
 (defn dot*-x-attrs [type {:keys [attrs]}]
@@ -490,7 +494,7 @@
     (cs/join (str " " (:edge-op *options*) " ") (map dot* node-ids))
     (dot*-trailing-attrs attrs)))
 
-(defn- options-for-type [type]
+(defn ^:private options-for-type [type]
   (condp = type
     ::graph    (assoc *options* :edge-op "--")
     ::digraph  (assoc *options* :edge-op "->")
@@ -538,7 +542,7 @@
 ;; Functions responsible for taking a DOT language graph and rendering it
 ;; to an image.
 
-(defn- build-render-command [{:keys [format layout scale invert-y?]}]
+(defn ^:private build-render-command [{:keys [format layout scale invert-y?]}]
   (->>
     ["dot"
      (if format    (str "-T" (name format)))
@@ -547,16 +551,18 @@
      (if invert-y? "-y")]
     (remove nil?)))
 
-(defn- ^java.lang.ProcessBuilder init-process-builder
+(defn ^:private ^java.lang.ProcessBuilder init-process-builder
   [{:keys [dir] :as options}]
-  (let [pb (java.lang.ProcessBuilder. (build-render-command options))]
-    (when dir (.directory pb (if (instance? java.io.File dir) dir (java.io.File. (str dir)))))
+  (let [pb (java.lang.ProcessBuilder. ^java.util.List (build-render-command options))]
+    (when dir (.directory pb (if (instance? java.io.File dir)
+                               dir
+                               (java.io.File. (str dir)))))
     pb))
 
-(def ^{:private true} binary-formats
+(def ^:private binary-formats
   #{:bmp :eps :gif :ico :jpg :jpeg :pdf :png :ps :ps2 :svgz :tif :tiff :vmlz :wbmp})
 
-(defn- read-dot-result [input-stream {:keys [format binary?]}]
+(defn ^:private read-dot-result [input-stream {:keys [format binary?]}]
   (if (or binary? (binary-formats format))
     (let [result (java.io.ByteArrayOutputStream.)]
       (jio/copy input-stream result)
@@ -623,7 +629,7 @@
   graph)
 
 
-(def ^:private shortcut-mask (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
+(def ^:private ^Integer shortcut-mask (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
 (def ^:private close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask))
 (defn show!
   "Show the given graph (must be the string result of (dorothy.core/dot)) in a
@@ -645,7 +651,7 @@
   * `(dorothy.core/dot)`
   "
   [graph & [options]]
-  (let [bytes (render graph (merge options {:format :png}))
+  (let [^bytes bytes (render graph (merge options {:format :png}))
         icon  (javax.swing.ImageIcon. bytes)
         w     (.getIconWidth icon)
         h     (.getIconHeight icon)

@@ -22,7 +22,7 @@ A *node statement* defines a node in the graph. It can take two forms:
     node-id
 
     [node-id]
-    
+
     [node-id { attr map }]
 
 where `node-id` is a string, number or keyword with optional trailing *port* and *compass-point*. Here are some node statement examples:
@@ -31,7 +31,7 @@ where `node-id` is a string, number or keyword with optional trailing *port* and
 
     :node0:port0    ; Define a node called "node0" with port "port0"
 
-    :node0:port0:sw ; Similarly a node with southwest compass point 
+    :node0:port0:sw ; Similarly a node with southwest compass point
 
 the node's attr map is a map of attributes for the node. For example,
 
@@ -71,7 +71,7 @@ alternatively, this can be expressed with the `(graph-attrs)` function like this
 
     (graph-attrs {:label "process #1", :style :filled, :color :lightgrey})
     ; => graph [label="process #1",style=filled,color=lightgrey];
-   
+
 ### Node and Edge Attribute Statement
 A *node attribute* or *edge attribute* statement sets node or edge attributes respectively for all nodes and edge statements that follow. It is expressed with `(node-attrs)` and `(edge-attrs)` statements:
 
@@ -119,10 +119,10 @@ Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of th
 
     (graph :graph-id ...)
     ; => graph "graph-id" { ... }
-    
+
     (digraph { :id :G :strict? true } ...)
     ; => strict graph G { ... }
-    
+
 ## Generate Graphviz dot format and rendering images
 
 Given a graph built with the functions described above, use the `(dot)` function to generate Graphviz DOT output.
@@ -142,10 +142,10 @@ Once you have DOT language output, you can render it as an image using the `(ren
 
     ; A one-liner with a very simple 4 node digraph.
     (-> (digraph [ [:a :b :c] [:b :d] ]) dot (render {:format :svg}))
-  
+
 *The dot tool executable must be on the system path*
 
-other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not. 
+other formats include `:pdf`, `:gif`, etc. The result will be either a java byte array, or String depending on whether the format is binary or not. `(render)` returns a string or a byte array depending on whether the output format is binary or not.
 
 Alternatively, use the `(save!)` function to write to a file or output stream.
 
@@ -167,6 +167,6 @@ which shows:
 
 ## License
 
-Copyright (C) 2011 Dave Ray
+Copyright (C) 2011-2014 Dave Ray
 
 Distributed under the Eclipse Public License, the same as Clojure.
