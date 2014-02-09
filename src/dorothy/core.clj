@@ -235,29 +235,29 @@
 ;; # Graphviz DOT AST
 ;;
 ;; Dorothy represents the unrendered graph with an Abstract Syntax Tree (AST).
-;; Each node in the tree is a map with a `::type` key and other keys that vary
+;; Each node in the tree is a map with a `:type` key and other keys that vary
 ;; based on the node type.
 
 (declare to-ast)
 
 (defn is-ast?
-  "Returns true if v is an AST node, i.e. has ::type. The second form
+  "Returns true if v is an AST node, i.e. has :type. The second form
   checks for a particular type.
 
   Examples:
 
-    (is-ast? {::type ::node})
+    (is-ast? {:type ::node})
     ;=> true
 
-    (is-ast? {::type ::node} ::node)
+    (is-ast? {:type ::node} ::node)
     ;=> true
   "
-  ([v] (and (map? v) (contains? v ::type)))
+  ([v] (and (map? v) (contains? v :type)))
   ([v type]
    (and (is-ast? v)
         (if (set? type)
-          (type (::type v))
-          (= type (::type v))))))
+          (type (:type v))
+          (= type (:type v))))))
 
 (defn ^:private check-ast [v type]
   (if-not (is-ast? v type)
@@ -271,7 +271,7 @@
     (error "Invalid compass point %s" pt)))
 
 (defn node-id
-  "Create a node-id. Creates an AST node with ::type ::node-id
+  "Create a node-id. Creates an AST node with :type ::node-id
 
   Examples:
 
@@ -279,13 +279,13 @@
     ;=> {:dorothy.core/type :dorothy.core/node-id :id :foo}
   "
   ([id port compass-pt]
-    { ::type ::node-id :id id :port port :compass-pt (check-compass-pt compass-pt) })
+    { :type ::node-id :id id :port port :compass-pt (check-compass-pt compass-pt) })
   ([id port]
     (node-id id port nil))
   ([id]
     (node-id id nil nil)))
 
-(defn ^:private x-attrs [type attrs] { ::type type :attrs attrs})
+(defn ^:private x-attrs [type attrs] { :type type :attrs attrs})
 
 (defn graph-attrs
   "Create a graph attribute statement. attrs is the attribute map.
@@ -296,7 +296,7 @@
     ;=> {:dorothy.core/type :dorothy.core/graph-attrs :attrs {:label \"hi\"}
   "
   [attrs]
-  { ::type ::graph-attrs :attrs attrs })
+  { :type ::graph-attrs :attrs attrs })
 
 (defn node-attrs
   "Create a node attribute statement. attrs is the attribute map.
@@ -307,7 +307,7 @@
     ;=> {:dorothy.core/type :dorothy.core/node-attrs :attrs {:label \"hi\"}
   "
   [attrs]
-  { ::type ::node-attrs :attrs attrs })
+  { :type ::node-attrs :attrs attrs })
 
 (defn edge-attrs
   "Create a edge attribute statement. attrs is the attribute map.
@@ -318,7 +318,7 @@
     ;=> {:dorothy.core/type :dorothy.core/edge-attrs :attrs {:label \"hi\"}
   "
   [attrs]
-  { ::type ::edge-attrs :attrs attrs })
+  { :type ::edge-attrs :attrs attrs })
 
 (defn node
   "Create a node in a graph. This is a more structured version of the
@@ -329,7 +329,7 @@
   id is the result of (dorothy.core/node-id)"
   [attrs id]
   (check-ast id ::node-id)
-  { ::type ::node :attrs attrs :id id })
+  { :type ::node :attrs attrs :id id })
 
 (defn edge
   "Create an edge. This is a more structured version of the
@@ -344,7 +344,7 @@
   "
   [attrs node-ids]
   (doseq [n node-ids] (check-ast n #{::node-id ::subgraph}))
-  { ::type ::edge :attrs attrs :node-ids node-ids })
+  { :type ::edge :attrs attrs :node-ids node-ids })
 
 (defn graph*
   "Create a graph AST node with type `:dorothy.core/graph`.
@@ -353,7 +353,7 @@
   statements is a list of statement AST nodes."
   [opts statements]
   (let [{:keys [id strict?]} opts]
-    {::type      ::graph
+    {:type      ::graph
      :id         id
      :strict?    (boolean strict?)
      :statements statements }))
@@ -363,12 +363,12 @@
 
 (defn digraph*
   "Same as `(dorothy.core/graph*)` but has type `:dorothy.core/digraph`"
-  [opts statements]  (assoc (graph* opts statements) ::type ::digraph))
+  [opts statements]  (assoc (graph* opts statements) :type ::digraph))
 
 (defn subgraph*
   "Same as `(dorothy.core/graph*)` but has type `:dorothy.core/subgraph`"
   [opts statements]
-  (assoc (graph* opts statements) ::type ::subgraph))
+  (assoc (graph* opts statements) :type ::subgraph))
 
 ;; ----------------------------------------------------------------------
 ;; # Dorothy Graph DSL Processing
@@ -484,7 +484,7 @@
     (gen-id? id)  (escape-id ((:id-generator *options*) (id)))
     :else         (error "Invalid id: %s - %s" (class id) id)))
 
-(defmulti dot* ::type)
+(defmulti dot* :type)
 
 (defn ^:private dot*-statements [statements]
   (apply str (interleave (map dot* statements) (repeat ";\n"))))
@@ -528,10 +528,10 @@
 
 (defmethod dot* ::graph [{:keys [id strict? statements] :as this}]
   (binding [*options* (merge
-                        (options-for-type (::type this))
+                        (options-for-type (:type this))
                         {:id-generator (id-generator)})]
     (str (if strict? "strict ")
-         (name (::type this)) " "
+         (name (:type this)) " "
          (if id (str (escape-id id) " "))
          "{\n" (dot*-statements statements) "} ")))
 
