@@ -31,15 +31,22 @@
     (instance? JLabel v)  (.getText v)
     :else (.getSimpleName (class v))))
 
+(defn children [p]
+  (seq (.getComponents p)))
+
 (defn node-and-edges [p]
-  (cons
+  (list
     [(gen-id p) {:label (label-for p)}]
-    (concat
-      (for [c (.getComponents p)] [(gen-id c) :> (gen-id p)])
-      (mapcat node-and-edges (.getComponents p)))))
+    (for [c (.getComponents p)]
+      [(gen-id c) :> (gen-id p)])))
 
 (defn -main [& args]
-  (-> (digraph :Swing (node-and-edges widgets))
+  (-> (digraph :Swing
+               (->> (tree-seq children children widgets)
+                    (map node-and-edges)))
       dot
       show!))
+
+(comment
+  (-main))
 

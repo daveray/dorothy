@@ -2,6 +2,19 @@
   (:require [dorothy.core :as d]
             [clojure.test :refer [deftest testing is are]]))
 
+(deftest test-is-ast?
+  (testing "Returns true for any map with ::type"
+    (is (d/is-ast? {::d/type :foo}))
+    (is (not (d/is-ast? 99)))
+    (is (not (d/is-ast? {}))))
+  (testing "Checks for a particular type"
+    (is (d/is-ast? {::d/type :foo} :foo))
+    (is (not (d/is-ast? {::d/type :foo} :bar))))
+  (testing "Checks for one of several types in a set"
+    (is (d/is-ast? {::d/type :foo} #{:foo :bar}))
+    (is (d/is-ast? {::d/type :bar} #{:foo :bar}))
+    (is (not (d/is-ast? {::d/type :yum} #{:foo :bar})))))
+
 (deftest test-escape-id
   (testing "does nothing to pure ids"
     (is (= "_abc123" (#'dorothy.core/escape-id :_abc123)))
@@ -73,3 +86,20 @@
     (is (= {::d/type ::d/subgraph :id :G :strict? false :statements [] }
            (d/subgraph* {:id :G } [])))))
 
+(deftest test-statements-are-flattened
+  (let [input [(list {:style :filled})
+               :a
+               [:a :> :b]
+               (cons :c (list (for [i [:d :e :f]]
+                                i)))]
+        result (d/graph input)]
+    (is (= [{::d/type ::d/graph-attrs}
+            {::d/type ::d/node-id :id "a"}
+            {::d/type ::d/edge }
+            {::d/type ::d/node-id :id "c"}
+            {::d/type ::d/node-id :id "d"}
+            {::d/type ::d/node-id :id "e"}
+            {::d/type ::d/node-id :id "f"} ]
+           (->> result
+                :statements
+                (map #(select-keys % [::d/type :id])))))))

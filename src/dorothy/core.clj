@@ -253,7 +253,11 @@
     ;=> true
   "
   ([v] (and (map? v) (contains? v ::type)))
-  ([v type] (and (is-ast? v) (= type (::type v)))))
+  ([v type]
+   (and (is-ast? v)
+        (if (set? type)
+          (type (::type v))
+          (= type (::type v))))))
 
 (defn ^:private check-ast [v type]
   (if-not (is-ast? v type)
@@ -339,7 +343,7 @@
     (dorothy.core/node-id)
   "
   [attrs node-ids]
-  (doseq [n node-ids] (check-ast n ::node-id))
+  (doseq [n node-ids] (check-ast n #{::node-id ::subgraph}))
   { ::type ::edge :attrs attrs :node-ids node-ids })
 
 (defn graph*
@@ -349,7 +353,10 @@
   statements is a list of statement AST nodes."
   [opts statements]
   (let [{:keys [id strict?]} opts]
-    { ::type ::graph :id id :strict? (boolean strict?) :statements statements }))
+    {::type      ::graph
+     :id         id
+     :strict?    (boolean strict?)
+     :statements statements }))
 
 (derive ::digraph ::graph)
 (derive ::subgraph ::graph)
@@ -360,7 +367,8 @@
 
 (defn subgraph*
   "Same as `(dorothy.core/graph*)` but has type `:dorothy.core/subgraph`"
-  [opts statements] (assoc (graph* opts statements) ::type ::subgraph))
+  [opts statements]
+  (assoc (graph* opts statements) ::type ::subgraph))
 
 ;; ----------------------------------------------------------------------
 ;; # Dorothy Graph DSL Processing
@@ -408,14 +416,28 @@
     (string? options)  {:id options}
     :else            (error "Invalid graph arg %s" options)))
 
+(defn ^:private flatten-statements
+  [ss]
+  (let [helper (fn [statement]
+                 (cond
+                   (seq? statement)
+                   (flatten-statements statement)
+                   :else
+                   [statement]))]
+    (mapcat helper ss)))
+
 (defn graph
   "Construct an undirected graph from the given statements which must be a vector.
   See https://github.com/daveray/dorothy or README.md for details of the DSL.
 
   The returned value may be converted to dot language with (dorothy.core/dot)."
-  ([handler options statements] (handler (desugar-graph-options options) (map to-ast statements)))
-  ([options statements]         (graph graph* options statements))
-  ([statements]               (graph {} statements)))
+  ([handler options statements]
+   (handler (desugar-graph-options options)
+            (map to-ast (flatten-statements statements))))
+  ([options statements]
+   (graph graph* options statements))
+  ([statements]
+   (graph {} statements)))
 
 (defn digraph
   "Construct a directed graph from the given statements which must be a vector.
@@ -440,7 +462,9 @@
 ;;
 ;; Generate DOT language from a graph AST.
 
-(def ^{:dynamic true :private true} *options* {:edge-op "->" :id-generator (fn [v] (-> v hash str))})
+(def ^:dynamic ^:private *options*
+  {:edge-op      "->"
+   :id-generator #(-> % hash str)})
 
 ; id's that don't need quotes
 (def ^:private safe-id-pattern #"^[_a-zA-Z\0200-\0377][_a-zA-Z0-9\0200-\0377]*$")
@@ -474,10 +498,12 @@
 (defn dot*-attrs [attrs]
   (cs/join
     \,
-    (for [[k v] attrs] (str (escape-id k) \= (escape-id v)))))
+    (for [[k v] attrs]
+      (str (escape-id k) \= (escape-id v)))))
 
 (defn ^:private dot*-trailing-attrs [attrs]
-  (if-not (empty? attrs) (str " [" (dot*-attrs attrs) "]")))
+  (if-not (empty? attrs)
+    (str " [" (dot*-attrs attrs) "]")))
 
 (defn dot*-x-attrs [type {:keys [attrs]}]
   (str type " [" (dot*-attrs attrs) "]"))
@@ -505,9 +531,9 @@
                         (options-for-type (::type this))
                         {:id-generator (id-generator)})]
     (str (if strict? "strict ")
-          (name (::type this)) " "
-          (if id (str (escape-id id) " "))
-          "{\n" (dot*-statements statements) "} ")))
+         (name (::type this)) " "
+         (if id (str (escape-id id) " "))
+         "{\n" (dot*-statements statements) "} ")))
 
 (defn dot
   "Convert the given Dorothy graph AST to a string suitable for input to
@@ -530,7 +556,6 @@
   (cond
     (is-ast? input) (dot* input)
     (vector? input)             (dot* (graph input))
-    (list?   input)             (dot* (graph input))
     (seq?    input)             (dot* (graph input))
     :else                       (error "Invalid (dot) input: %s" input)))
 
@@ -675,60 +700,68 @@
 ;; ----------------------------------------------------------------------
 ;; # Random tests
 
-(comment (do
+(comment
+
   (println (dot* (node-id "start" "p" :ne)))
   (println (dot* (node-id "start" "p")))
   (println (dot* (node {} (node-id :start))))
   (println (dot* (node {:style :filled :color :blue} (node-id :start) )))
   (println (dot* (edge {} [(node-id :start)(node-id :end)])))
   (println (binding [*options* {:edge-op "--"}]
-    (dot* (edge {:color :grey} [(node-id :start)(node-id :middle :p :_)(node-id :end)]))))
+             (dot* (edge {:color :grey} [(node-id :start)(node-id :middle :p :_)(node-id :end)]))))
   (println (dot* (graph-attrs {:style :filled})))
   (println (dot* (node-attrs {:style :filled, :color :red})))
   (println (dot* (edge-attrs {:style :filled})))
 
-  (println (dot*
-    (graph*
-      {:id :G :strict? true}
-      [(edge nil [(node-id "start") (node-id :a0)])
-      (edge {:color :green}
-            [(node-id :a0)
-            (subgraph* {} [(edge {} [(node-id :a) (node-id :b)])])
-            (node-id :a1)])
-      (node {:shape :Mdiamond} (node-id :start))])))
+  (println (dot
+             (graph
+               {:id :G :strict? true}
+               [(edge nil [(node-id "start") (node-id :a0)])
+                (edge {:color :green}
+                      [(node-id :a0)
+                       (subgraph [{:style :filled :color :lightgrey :label "Hello"}
+                                  (edge {} [(node-id :a) (node-id :b)])
+                                  (edge {} [(node-id :b) (node-id :c)]) ])
+                       (node-id :a1)])
+                (node {:shape :Mdiamond} (node-id :start))])))
 
   (println (dot*
-    (digraph*
-      ;{:id :G :strict? true}
-      {}
-      [(edge nil [(node-id "start") (node-id :a0)])
-      (edge {:color :gre_en :text "hello\"there"} [(node-id :a0) (node-id :a1)])
-      (node {:shape :Mdiamond} (node-id :start))])))
+             (digraph*
+               ;{:id :G :strict? true}
+               {}
+               [(edge nil [(node-id "start") (node-id :a0)])
+                (edge {:color :gre_en :text "hello\"there"} [(node-id :a0) (node-id :a1)])
+                (node {:shape :Mdiamond} (node-id :start))])))
+
+  (-> (digraph :G [(for [i (range 5)]
+                     [i :> (inc i)])
+                   [5 0]])
+      dot
+      show!)
 
   (-> (digraph :G [
-    (subgraph :cluster_0 [
-      {:style :filled, :color :lightgrey, :label "process #1"}
-      [:node {:style :filled, :color :white}]
+                   (subgraph :cluster_0 [
+                                         {:style :filled, :color :lightgrey, :label "process #1"}
+                                         [:node {:style :filled, :color :white}]
 
-      [:a0 :> :a1 :> :a2 :> :a3]])
+                                         [:a0 :> :a1 :> :a2 :> :a3]])
 
-    (subgraph :cluster_1 [
-      {:color :blue, :label "process #2"}
-      [:node {:style :filled}]
+                   (subgraph :cluster_1 [
+                                         {:color :blue, :label "process #2"}
+                                         [:node {:style :filled}]
 
-      [:b0 :> :b1 :> :b2 :> :b3]])
+                                         [:b0 :> :b1 :> :b2 :> :b3]])
 
-    [:start :a0]
-    [:start :b0]
-    [:a1    :b3]
-    [:b2    :a3]
-    [:a3    :a0]
-    [:a3    :end]
-    [:b3    :end]
+                   [:start :a0]
+                   [:start :b0]
+                   [:a1    :b3]
+                   [:b2    :a3]
+                   [:a3    :a0]
+                   [:a3    :end]
+                   [:b3    :end]
 
-    [:start {:shape :Mdiamond}]
-    [:end   {:shape :Msquare}]])
+                   [:start {:shape :Mdiamond}]
+                   [:end   {:shape :Msquare}]])
 
-    dot
-    println)
-))
+      dot
+      show!))
