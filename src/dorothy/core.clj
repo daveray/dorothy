@@ -653,9 +653,6 @@
       (jio/copy bytes output)))
   graph)
 
-
-(def ^:private ^Integer shortcut-mask (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
-(def ^:private close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask))
 (defn show!
   "Show the given graph (must be the string result of (dorothy.core/dot)) in a
   new Swing window with scrollbars. Supports same options as
@@ -676,7 +673,9 @@
   * `(dorothy.core/dot)`
   "
   [graph & [options]]
-  (let [^bytes bytes (render graph (merge options {:format :png}))
+  (let [shortcut-mask (int (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
+        close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask)
+        ^bytes bytes (render graph (merge options {:format :png}))
         icon  (javax.swing.ImageIcon. bytes)
         w     (.getIconWidth icon)
         h     (.getIconHeight icon)
