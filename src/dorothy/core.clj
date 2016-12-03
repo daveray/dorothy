@@ -653,6 +653,17 @@
       (jio/copy bytes output)))
   graph)
 
+(defonce ^:private frames (atom {}))
+
+(defn- get-frame [id options]
+  ((swap! frames (fn [fs]
+                   (if (contains? fs id)
+                     fs
+                     (let [f (javax.swing.JFrame. "Dorothy")]
+                       (.setLocationByPlatform f true)
+                       (assoc fs id f)))))
+   id))
+
 (defn show!
   "Show the given graph (must be the string result of (dorothy.core/dot)) in a
   new Swing window with scrollbars. Supports same options as
@@ -662,6 +673,12 @@
 
     ; Simple 3 node graph, converted to dot and displayed.
     (-> (digraph [[:a :b :c]]) dot show!)
+
+  Additional options:
+
+  * :frame supply to reuse frames.
+  * :frame-width specify maximum frame width.
+  * :frame-height specify maximum frame width.
 
   Notes:
 
@@ -673,25 +690,30 @@
   * `(dorothy.core/dot)`
   "
   [graph & [options]]
-  (let [shortcut-mask (int (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
+  (let [id (:frame options (gensym))
+        frame (get-frame id options)
+        shortcut-mask (int (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
         close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask)
         ^bytes bytes (render graph (merge options {:format :png}))
         icon  (javax.swing.ImageIcon. bytes)
+        max-w (:frame-width options 640)
+        max-h (:frame-height options 480)
         w     (.getIconWidth icon)
         h     (.getIconHeight icon)
         lbl   (javax.swing.JLabel. icon)
-        sp    (javax.swing.JScrollPane. lbl)
-        frame (javax.swing.JFrame. (format "Dorothy (%dx%d)" w h))]
+        sp    (javax.swing.JScrollPane. lbl)]
     (.. sp getInputMap (put close-key "closeWindow"))
     (.. sp getActionMap (put "closeWindow" (proxy [javax.swing.AbstractAction] []
                                              (actionPerformed [e]
                                                (.setVisible frame false)
-                                               (.dispose frame)))))
+                                               (.dispose frame)
+                                               (swap! frames dissoc id)))))
     (doto frame
-      (.setLocationByPlatform true)
+      (.setTitle (format "Dorothy %s (%dx%d)" id w h))
       (.setContentPane sp)
-      (.setSize (min 640 (+ w 50)) (min 480 (+ h 50)))
-      (.setVisible true))))
+      (.setSize (min max-w (+ w 50)) (min max-h (+ h 50)))
+      (.setVisible true))
+    nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
