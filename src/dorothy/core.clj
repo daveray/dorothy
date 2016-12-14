@@ -388,6 +388,7 @@
     more         (vector-to-ast-edge v)
     (map? v1)    (node v1 (to-ast v0))
     v1           (vector-to-ast-edge v)
+    (is-ast? v0) v0
     (map? v0)    (graph-attrs v0)
     (gen-id? v0) (node {} (node-id v0))
     v0           (node {} (to-ast v0))))
