@@ -692,7 +692,7 @@
   "
   [graph & [options]]
   (let [id (:frame options (gensym))
-        frame (get-frame id options)
+        ^javax.swing.JFrame frame (get-frame id options)
         shortcut-mask (int (.. java.awt.Toolkit getDefaultToolkit getMenuShortcutKeyMask))
         close-key (javax.swing.KeyStroke/getKeyStroke java.awt.event.KeyEvent/VK_W shortcut-mask)
         ^bytes bytes (render graph (merge options {:format :png}))
