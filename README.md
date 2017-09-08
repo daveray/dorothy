@@ -1,4 +1,4 @@
-# dorothy
+# dorothy   [![Travis CI status](https://secure.travis-ci.org/cemerick/dorothy.png)](http://travis-ci.org/#!/cemerick/dorothy/builds)
 
 [Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
 
