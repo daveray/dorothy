@@ -1,6 +1,7 @@
-# dorothy   [![Travis CI status](https://secure.travis-ci.org/cemerick/dorothy.png)](http://travis-ci.org/#!/cemerick/dorothy/builds)
+# dorothy   [![Travis CI status](https://secure.travis-ci.org/daveray/dorothy.png)](http://travis-ci.org/#!/daveray/dorothy/builds)
 
-[Hiccup-style] (https://github.com/weavejester/hiccup) generation of [Graphviz] (http://www.graphviz.org/) graphs in Clojure.
+[Hiccup-style] (https://github.com/weavejester/hiccup) generation of
+[Graphviz](http://www.graphviz.org/) graphs in Clojure and ClojureScript.
 
 *Dorothy is extremely alpha and subject to radical change. [Release Notes Here] (https://github.com/daveray/dorothy/wiki)*
 
@@ -8,7 +9,7 @@
 
 *Dorothy assumes you have an understanding of Graphviz and DOT. The text below describes the mechanics of Dorothy's DSL, but you'll need to refer to the Graphviz documentation for specifics on node shapes, valid attributes, etc.*
 
-*The Graphviz dot tool executable must be on the system path*
+*The Graphviz dot tool executable must be on the system path to render*
 
 Dorothy is on Clojars. In Leiningen:
 
@@ -123,16 +124,30 @@ Similarly for `(graph)` (undirected graph) and `(subgraph)`. A second form of th
     (digraph { :id :G :strict? true } ...)
     ; => strict graph G { ... }
 
-## Generate Graphviz dot format and rendering images
+## Generate Graphviz dot format
 
 Given a graph built with the functions described above, use the `(dot)` function to generate Graphviz DOT output.
 
-    (use 'dorothy.core)
-    (def g (graph [ ... ]))
-    (dot g)
+    (require '[dorothy.core :as dot])
+    (def g (dot/graph [ ... ]))
+    (dot/dot g)
     "graph { ... }"
 
+## Rendering images (ClojureScript)
+
+Dorothy currently doesn't include any facilities for rendering dot-format output to images. However,
+you can pull in [viz.cljc](https://github.com/jebberjeb/viz.cljc) or
+[viz.js](https://github.com/mdaines/viz.js), both of which will allow you to produce
+png, svg, and other image formats from your dorothy-generated dot-formatted graph content.
+
+Wanted: pull requests to implement node equivalents to the rendering functions available for Clojure/JVM
+in the `dorothy.jvm` namespace. **link to github issue here**
+
+## Render images via `graphviz` (Clojure/JVM)
+
 Once you have DOT language output, you can render it as an image using the `(render)` function:
+
+    (require '[dorothy.jvm :refer (render save! show!)])
 
     ; This produces a png as an array of bytes
     (render graph {:format :png})
@@ -141,7 +156,9 @@ Once you have DOT language output, you can render it as an image using the `(ren
     (render graph {:format :svg})
 
     ; A one-liner with a very simple 4 node digraph.
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (render {:format :svg}))
+    (-> (dot/digraph [ [:a :b :c] [:b :d] ])
+        dot/dot
+        (render {:format :svg}))
 
 *The dot tool executable must be on the system path*
 
@@ -150,7 +167,9 @@ other formats include `:pdf`, `:gif`, etc. The result will be either a java byte
 Alternatively, use the `(save!)` function to write to a file or output stream.
 
     ; A one-liner with a very simple 4 node digraph
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot (save! "out.png" {:format :png}))
+    (-> (dot/digraph [ [:a :b :c] [:b :d] ])
+        dot/dot
+        (save! "out.png" {:format :png}))
 
 Finally, for simple tests, use the `(show!)` function to view the result in a simple Swing viewer:
 
@@ -158,7 +177,9 @@ Finally, for simple tests, use the `(show!)` function to view the result in a si
     (show! graph)
 
     ; A one-liner with a very simple 4 node digraph
-    (-> (digraph [ [:a :b :c] [:b :d] ]) dot show!)
+    (-> (dot/digraph [ [:a :b :c] [:b :d] ])
+        dot/dot
+        show!)
 
 which shows:
 
@@ -167,6 +188,6 @@ which shows:
 
 ## License
 
-Copyright (C) 2011-2014 Dave Ray
+Copyright (C) 2011-2017 Dave Ray and contributors
 
 Distributed under the Eclipse Public License, the same as Clojure.
