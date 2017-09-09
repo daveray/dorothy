@@ -183,7 +183,7 @@ Finally, for simple tests, use the `(show!)` function to view the result in a si
 
 which shows:
 
-<img src="https://github.com/downloads/daveray/dorothy/dorothy-show.png" align="center" />
+<img src="sample.png"/>
 
 
 ## License
