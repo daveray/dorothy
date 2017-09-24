@@ -37,7 +37,7 @@
     (is (= { :type ::d/node-id :id :foo :port :bar :compass-pt :n}
            (d/node-id :foo :bar :n))))
   (testing "checks compass point"
-    (is (thrown? RuntimeException (d/node-id :a :b :x)))
+    (is (thrown? #?(:clj RuntimeException :cljs js/Error) (d/node-id :a :b :x)))
     (are [pt] (d/node-id :a :b pt)
       :n :ne :e :se :s :sw :w :nw :c :_
       "n" "ne" "e" "se" "s" "sw" "w" "nw" "c" "_")))
@@ -59,14 +59,15 @@
 
 (deftest test-node
   (testing "checks that :id is a node-id"
-    (is (thrown? RuntimeException (d/node {} 99))))
+    (is (thrown? #?(:clj RuntimeException :cljs js/Error) (d/node {} 99))))
   (testing "return :type ::node"
     (is (= {:type ::d/node :attrs {:a 1} :id (d/node-id :foo) }
            (d/node {:a 1} (d/node-id :foo))))))
 
 (deftest test-edge
   (testing "checks that :node-ids is all node-id"
-    (is (thrown? RuntimeException (d/edge {} [(d/node-id :hi) 1.2 (d/node-id :bye)]))))
+    (is (thrown? #?(:clj RuntimeException :cljs js/Error)
+                 (d/edge {} [(d/node-id :hi) 1.2 (d/node-id :bye)]))))
   (testing "return :type ::edge"
     (is (= {:type ::d/edge :attrs {:a 1} :node-ids [(d/node-id :foo)(d/node-id :bar)] }
            (d/edge {:a 1} [(d/node-id :foo)(d/node-id :bar)])))))
