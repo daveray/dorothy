@@ -1,9 +1,9 @@
 # dorothy   [![Travis CI status](https://secure.travis-ci.org/daveray/dorothy.png)](http://travis-ci.org/#!/daveray/dorothy/builds)
 
-[Hiccup-style] (https://github.com/weavejester/hiccup) generation of
+[Hiccup-style](https://github.com/weavejester/hiccup) generation of
 [Graphviz](http://www.graphviz.org/) graphs in Clojure and ClojureScript.
 
-*Dorothy is extremely alpha and subject to radical change. [Release Notes Here] (https://github.com/daveray/dorothy/wiki)*
+*Dorothy is extremely alpha and subject to radical change. [Release Notes Here](https://github.com/daveray/dorothy/wiki)*
 
 ## Usage
 
