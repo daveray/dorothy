@@ -104,3 +104,16 @@
            (->> result
                 :statements
                 (map #(select-keys % [:type :id])))))))
+
+(deftest test-to-ast
+  (testing "uses name of an un-qualified keyword"
+    (is (= {:type ::d/node-id :id "foo" :port nil :compass-pt nil}
+           (-> (d/graph [:foo])
+               :statements
+               first))))
+
+  (testing "uses namespace and name of an un-qualified keyword"
+    (is (= {:type ::d/node-id :id "foo/bar" :port nil :compass-pt nil}
+           (-> (d/graph [:foo/bar])
+               :statements
+               first)))))

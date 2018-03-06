@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo
             :comments "same as Clojure"}
-  :dependencies [[org.clojure/clojure "1.8.0"]]
+  :dependencies [[org.clojure/clojure "1.9.0"]]
   :profiles
   {:dev {:dependencies [[org.clojure/clojurescript "1.9.908"]
                         [com.cemerick/piggieback "0.2.2"]]

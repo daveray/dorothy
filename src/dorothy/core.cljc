@@ -400,13 +400,14 @@
 (defn ^:private to-ast [v]
   (cond
     (is-ast? v)  v
-    (keyword? v) (parse-node-id (name v))
-    (string?  v) (parse-node-id v)
-    (number?  v) (parse-node-id (str v))
-    (gen-id?  v) (node-id v)
-    (map? v)     (graph-attrs v)
-    (vector? v)  (vector-to-ast v)
-    :else        (error "Don't know what to do with %s" v)))
+    (qualified-keyword? v) (parse-node-id (str (namespace v) "/" (name v)))
+    (keyword? v)           (parse-node-id (name v) )
+    (string?  v)           (parse-node-id v)
+    (number?  v)           (parse-node-id (str v))
+    (gen-id?  v)           (node-id v)
+    (map? v)               (graph-attrs v)
+    (vector? v)            (vector-to-ast v)
+    :else                  (error "Don't know what to do with %s" v)))
 
 (defn ^:private desugar-graph-options
   "Turn first arg of (graph) into something usable"
