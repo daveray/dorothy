@@ -476,15 +476,15 @@
 (defn ^:private safe-id? [s] (re-find safe-id-pattern s))
 (defn ^:private html? [s] (re-find html-pattern s))
 (defn ^:private escape-quotes [s] (cs/replace s "\"" "\\\""))
-(defn ^:private escape-id [id]
+(defn ^:private escape-id [id attr-name?]
   (cond
     (string? id)  (cond
-                    (safe-id? id) id
+                    (and attr-name? (safe-id? id)) id
                     (html? id)    (str \< id \>)
                     :else         (str \" (escape-quotes id) \"))
     (number? id)  (str id)
-    (keyword? id) (escape-id (name id))
-    (gen-id? id)  (escape-id ((:id-generator *options*) (id)))
+    (keyword? id) (escape-id (name id) attr-name?)
+    (gen-id? id)  (escape-id ((:id-generator *options*) (id)) attr-name?)
     :else         (error "Invalid id: %s - %s" (type id) id)))
 
 (defmulti dot* :type)
@@ -494,15 +494,15 @@
 
 (defmethod dot* ::node-id [{:keys [id port compass-pt]}]
   (str
-    (escape-id id)
-    (if port (str ":" (escape-id port)))
+    (escape-id id true)
+    (if port (str ":" (escape-id port true)))
     (if compass-pt (str ":" (name compass-pt)))))
 
 (defn dot*-attrs [attrs]
   (cs/join
     \,
     (for [[k v] attrs]
-      (str (escape-id k) \= (escape-id v)))))
+      (str (escape-id k true) \= (escape-id v false)))))
 
 (defn ^:private dot*-trailing-attrs [attrs]
   (if-not (empty? attrs)
@@ -535,7 +535,7 @@
                         {:id-generator (id-generator)})]
     (str (if strict? "strict ")
          (name (:type this)) " "
-         (if id (str (escape-id id) " "))
+         (if id (str (escape-id id false) " "))
          "{\n" (dot*-statements statements) "} ")))
 
 (defn dot
