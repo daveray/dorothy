@@ -11,9 +11,9 @@
 
 *The Graphviz dot tool executable must be on the system path to render*
 
-Dorothy is on Clojars. In Leiningen:
+Dorothy is on Clojars:
 
-    [dorothy "x.y.z"]
+[![Clojars Project](https://img.shields.io/clojars/v/dorothy.svg)](https://clojars.org/dorothy)
 
 A graph consists of a vector of *statements*. The following sections describe the format for all the types of statements. If you're bored, skip ahead to the "Defining Graphs" section below.
 
